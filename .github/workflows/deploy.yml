@@ -1,0 +1,90 @@
+name: deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [dev, test, prod]
+        default: dev
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Bicep CLI
+        run: |
+          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x bicep
+          sudo mv bicep /usr/local/bin/bicep
+          bicep --version
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve environment
+        id: env
+        run: |
+          ENV="${{ inputs.environment || 'dev' }}"
+          echo "env=$ENV" >> "$GITHUB_OUTPUT"
+          echo "paramfile=infra/parameters/main.$ENV.bicepparam" >> "$GITHUB_OUTPUT"
+
+      - name: az deployment sub validate
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az deployment sub validate \
+              --location ${{ vars.AZURE_LOCATION }} \
+              --template-file infra/main.bicep \
+              --parameters ${{ steps.env.outputs.paramfile }}
+
+      - name: az deployment sub what-if
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az deployment sub what-if \
+              --location ${{ vars.AZURE_LOCATION }} \
+              --template-file infra/main.bicep \
+              --parameters ${{ steps.env.outputs.paramfile }}
+
+      - name: az deployment sub create
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            DEPLOY_NAME="aio-${{ steps.env.outputs.env }}-$(date -u +%Y%m%d-%H%M%S)"
+            az deployment sub create \
+              --name "$DEPLOY_NAME" \
+              --location ${{ vars.AZURE_LOCATION }} \
+              --template-file infra/main.bicep \
+              --parameters ${{ steps.env.outputs.paramfile }} \
+              --output json > deploy-output.json
+            jq 'del(.properties.parameters, .properties.outputs.workloadOutputs.value.managedIdentityClientId)' deploy-output.json > deploy-output-sanitized.json || cp deploy-output.json deploy-output-sanitized.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deploy-output-${{ steps.env.outputs.env }}
+          path: deploy-output-sanitized.json

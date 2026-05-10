@@ -1,0 +1,107 @@
+name: validate
+
+on:
+  pull_request:
+    paths:
+      - 'infra/**'
+      - '.github/workflows/**'
+      - 'scripts/**'
+      - 'bicepconfig.json'
+      - '.gitleaks.toml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Bicep CLI
+        run: |
+          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x bicep
+          sudo mv bicep /usr/local/bin/bicep
+          bicep --version
+      - name: bicep lint
+        run: bicep lint infra/main.bicep
+      - name: bicep build
+        run: bicep build infra/main.bicep --outdir build/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arm-template
+          path: build/main.json
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  validate-and-whatif:
+    runs-on: ubuntu-latest
+    environment: dev
+    needs: lint-build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Bicep CLI
+        run: |
+          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x bicep
+          sudo mv bicep /usr/local/bin/bicep
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: az deployment sub validate (dev paramfile)
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az deployment sub validate \
+              --location ${{ vars.AZURE_LOCATION }} \
+              --template-file infra/main.bicep \
+              --parameters infra/parameters/main.dev.bicepparam
+      - name: az deployment sub what-if (dev paramfile)
+        id: whatif
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az deployment sub what-if \
+              --location ${{ vars.AZURE_LOCATION }} \
+              --template-file infra/main.bicep \
+              --parameters infra/parameters/main.dev.bicepparam \
+              > whatif.txt 2>&1 || true
+            head -c 60000 whatif.txt > whatif-trim.txt
+            echo "WHATIF<<EOF" >> "$GITHUB_OUTPUT"
+            cat whatif-trim.txt >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+      - name: Comment what-if on PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: bicep-whatif
+          message: |
+            ### Bicep `what-if` (dev)
+            <details><summary>diff</summary>
+
+            ```
+            ${{ steps.whatif.outputs.WHATIF }}
+            ```
+
+            </details>

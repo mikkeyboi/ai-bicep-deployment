@@ -1,0 +1,42 @@
+# --- Secrets / local-only ---
+.env
+.env.*
+*.local.bicepparam
+*.secrets.bicepparam
+.azure/
+*.pem
+*.key
+
+# --- Bicep build outputs ---
+*.bicepbuild
+infra/**/main.json
+infra/**/*.compiled.json
+
+# --- Tooling caches ---
+.bicep/
+.vscode/*.log
+.terraform/
+.tmp-*
+*.tmp
+
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+
+# --- Node (only if scripts ever land here) ---
+node_modules/
+npm-debug.log*
+
+# --- Python (preflight or helpers) ---
+__pycache__/
+*.pyc
+.venv/
+
+# Bicep build outputs
+*.bicep.json
+infra/**/*.json
+!infra/parameters/**/*.json
+

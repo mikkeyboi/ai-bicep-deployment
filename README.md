@@ -1,49 +1,64 @@
 # ai-bicep-deployment
 
-Spec-driven Bicep deployment for an Azure **AI All-in-One** foundation
-(AI Foundry hub + project, Azure OpenAI, Anthropic Claude in Foundry,
-Storage, Key Vault, observability, managed identity + RBAC).
+Bicep + GitHub Actions OIDC provisioning for an Azure AI "all-in-one"
+foundation: AI Foundry (hub + project), Azure OpenAI with frontier
+models, Anthropic Claude in Microsoft Foundry, Storage, Key Vault,
+Log Analytics, App Insights, managed identity, and RBAC.
 
-> **Public repo notice.** This repository must contain **no** tenant IDs,
-> subscription IDs, secrets, or personal data. Identifiers are injected
-> at deploy time via GitHub Variables (CI) or script arguments (local).
-> See [Constitution](.specify/memory/constitution.md) Principles II & III.
+> **Public repo.** No tenant IDs, subscription IDs, keys, or personal
+> data live in source. See `.specify/memory/constitution.md`.
 
-## Status
+## Quickstart (3 steps)
 
-Spec-driven via [GitHub Spec Kit](https://github.com/github/spec-kit).
-The first feature is **`001-aio-foundation`**:
+1. **OIDC trust** — once per repo:
+   ```pwsh
+   ./scripts/setup-oidc.ps1 `
+     -SubscriptionId <YOUR_SUBSCRIPTION_ID> `
+     -TenantId       <YOUR_TENANT_ID> `
+     -GitHubOrg      mikkeyboi `
+     -GitHubRepo     ai-bicep-deployment `
+     -Environments   dev,test,prod
+   ```
+2. **GitHub Variables** — set `AZURE_TENANT_ID`,
+   `AZURE_SUBSCRIPTION_ID`, `AZURE_CLIENT_ID`, `AZURE_LOCATION` in each
+   GitHub Environment (the script above prints exact `gh variable set`
+   commands).
+3. **Deploy** — local dry-run first, then CI:
+   ```pwsh
+   ./scripts/deploy.ps1 -Environment dev `
+     -Subscription <YOUR_SUBSCRIPTION_ID> -Tenant <YOUR_TENANT_ID> -WhatIf
+   gh workflow run deploy.yml -f environment=dev
+   ```
 
-- [Spec](specs/001-aio-foundation/spec.md)
-- [Plan](specs/001-aio-foundation/plan.md)
-- [Research](specs/001-aio-foundation/research.md)
-- [Data model](specs/001-aio-foundation/data-model.md)
-- [Module contracts](specs/001-aio-foundation/contracts/modules.contract.md)
-- [Quickstart (operator runbook)](specs/001-aio-foundation/quickstart.md)
-- [Tasks](specs/001-aio-foundation/tasks.md)
+Full operator runbook: [`specs/001-aio-foundation/quickstart.md`](specs/001-aio-foundation/quickstart.md).
 
-## Quick Start (TL;DR)
-
-1. Read [`specs/001-aio-foundation/quickstart.md`](specs/001-aio-foundation/quickstart.md).
-2. Run `scripts/setup-oidc.ps1` once to wire GitHub ↔ Azure OIDC.
-3. `gh workflow run deploy.yml -f environment=dev` — or run
-   `scripts/deploy.ps1` locally.
-
-## Layout (planned, see `plan.md` for full tree)
+## Layout
 
 ```
 infra/
-  main.bicep             # subscription-scope entry
-  workload.bicep         # rg-scope orchestrator
-  parameters/            # main.<env>.bicepparam — only per-env diff
-  shared/                # naming.bicep, tags.bicep, types.bicep, region-capabilities.bicep
-  modules/               # one folder per resource family
-scripts/                 # deploy.ps1/.sh, setup-oidc.ps1, verify-deploy.ps1
-.github/workflows/       # validate.yml (PR), deploy.yml (OIDC, env-gated)
-specs/                   # Spec Kit artifacts
-.specify/                # Spec Kit templates & memory (constitution)
+  main.bicep                # subscription-scope entry; creates RG, calls workload
+  workload.bicep            # RG-scope orchestrator
+  shared/                   # types, naming, tags, region capabilities
+  modules/                  # one folder per resource family
+  parameters/main.<env>.bicepparam
+.github/workflows/          # validate.yml (PR gate), deploy.yml (OIDC)
+scripts/                    # deploy.ps1, deploy.sh, setup-oidc.ps1, preflight.ps1
+specs/001-aio-foundation/   # spec, plan, research, data-model, contracts, tasks
+.specify/                   # Spec Kit templates, scripts, constitution
 ```
+
+## Governing principles
+
+`.specify/memory/constitution.md`. Every PR is reviewed against it.
+
+## Contributing
+
+- Create a branch `NNN-<slug>`; add/update a spec under `specs/`.
+- Open a PR — `validate.yml` lints, builds, runs `what-if`, and
+  `gitleaks`-scans the diff. The `what-if` summary is posted as a
+  PR comment.
+- Squash-merge after approval; `Deploy (dev)` runs automatically.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).

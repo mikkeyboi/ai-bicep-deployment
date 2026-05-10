@@ -1,0 +1,50 @@
+{
+  "$schema": "https://aka.ms/bicep/bicepconfig-schema.json",
+  "moduleAliases": {
+    "br": {
+      "public": {
+        "registry": "mcr.microsoft.com",
+        "modulePath": "bicep"
+      }
+    }
+  },
+  "experimentalFeaturesEnabled": {
+    "userDefinedFunctions": true
+  },
+  "analyzers": {
+    "core": {
+      "enabled": true,
+      "verbose": false,
+      "rules": {
+        "no-hardcoded-env-urls": { "level": "error" },
+        "no-unused-params": { "level": "error" },
+        "no-unused-vars": { "level": "error" },
+        "no-unused-existing-resources": { "level": "error" },
+        "prefer-interpolation": { "level": "error" },
+        "secure-parameter-default": { "level": "error" },
+        "outputs-should-not-contain-secrets": { "level": "error" },
+        "adminusername-should-not-be-literal": { "level": "error" },
+        "use-stable-vm-image": { "level": "error" },
+        "use-protectedsettings-for-commandtoexecute-secrets": { "level": "error" },
+        "no-hardcoded-location": { "level": "warning" },
+        "no-loc-expr-outside-params": { "level": "error" },
+        "explicit-values-for-loc-params": { "level": "warning" },
+        "use-recent-api-versions": { "level": "off" },
+        "use-recent-module-versions": { "level": "off" },
+        "use-resource-symbol-reference": { "level": "warning" },
+        "max-outputs": { "level": "error" },
+        "max-params": { "level": "error" },
+        "max-resources": { "level": "error" },
+        "max-variables": { "level": "error" },
+        "no-conflicting-metadata": { "level": "error" },
+        "no-deployments-resources": { "level": "warning" },
+        "decompiler-cleanup": { "level": "error" },
+        "simplify-interpolation": { "level": "error" },
+        "use-parent-property": { "level": "warning" },
+        "use-resource-id-functions": { "level": "warning" },
+        "use-stable-resource-identifiers": { "level": "warning" },
+        "what-if-short-circuiting": { "level": "warning" }
+      }
+    }
+  }
+}

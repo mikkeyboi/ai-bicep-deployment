@@ -1,0 +1,59 @@
+# gitleaks config for ai-bicep-deployment
+# Public repo. Goal: prevent any Azure tenant/subscription GUID, any
+# personal email, or any Cognitive Services / OpenAI / SAS-style key
+# from being committed.
+#
+# This file deliberately contains NO real GUIDs or email addresses.
+# Operator-specific values are intentionally absent so that this file
+# itself stays safe to publish.
+
+title = "ai-bicep-deployment gitleaks rules"
+
+[extend]
+useDefault = true
+
+# --- Any Azure-shaped GUID in source files (tenant/subscription IDs etc.) ---
+# Catches any v4 GUID that is NOT one of the well-known placeholder zero-GUIDs.
+[[rules]]
+id          = "azure-guid-in-source"
+description = "Azure tenant/subscription/object GUID must not appear in committed source"
+regex       = '''(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b'''
+tags        = ["azure", "guid", "pii"]
+
+# --- Any gmail.com address (operator's personal email shape) ---
+[[rules]]
+id          = "personal-gmail"
+description = "Personal email addresses must not appear in committed source"
+regex       = '''(?i)\b[A-Z0-9._%+-]+@gmail\.com\b'''
+tags        = ["pii", "email"]
+
+# --- Cognitive Services / OpenAI key shape (32 hex) ---
+[[rules]]
+id          = "azure-cognitive-key-shape"
+description = "32-character hex key (Cognitive Services / OpenAI key shape)"
+regex       = '''(?i)(api[-_]?key|apikey|"key")[\"'=:\s]{1,5}[a-f0-9]{32}\b'''
+tags        = ["azure", "cognitive", "key"]
+
+# --- SAS token shape ---
+[[rules]]
+id          = "azure-sas-token"
+description = "Azure SAS token query string"
+regex       = '''sv=20\d{2}-\d{2}-\d{2}&[^"\s]*sig=[A-Za-z0-9%]{16,}'''
+tags        = ["azure", "storage", "sas"]
+
+[allowlist]
+description = "Placeholders, example GUIDs, and well-known Azure built-in role IDs."
+paths = [
+  '''(?i)infra/modules/role-assignment/main\.bicep$'''
+]
+regexes = [
+  '''00000000-0000-0000-0000-000000000000''',
+  '''11111111-1111-1111-1111-111111111111''',
+  '''<YOUR_TENANT_ID>''',
+  '''<YOUR_SUBSCRIPTION_ID>''',
+  '''<TENANT_ID>''',
+  '''<SUBSCRIPTION_ID>''',
+  '''<id>''',
+  '''example@example\.com''',
+  '''noreply@github\.com'''
+]

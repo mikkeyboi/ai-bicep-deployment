@@ -22,7 +22,7 @@ Conventions:
   *Done when*: `bicep lint infra/main.bicep` runs (file may not exist yet — expect file-not-found, not config error).
 - **T003** [P] Add `.gitleaks.toml` with custom rules:
   (a) Azure tenant/subscription GUID pattern outside `specs/**` and `*.md`,
-  (b) `mw.leung93@gmail.com`, `mkleung2325@gmail.com` literal blocks,
+  (b) the operator's personal email literal blocks (codified in `.gitleaks.toml`),
   (c) generic key/secret patterns from gitleaks defaults.
   *Done when*: `gitleaks detect --no-git -v` exits 0 on the empty repo.
 - **T004** [P] Add `.github/copilot-instructions.md` mirroring the
