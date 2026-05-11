@@ -44,3 +44,4 @@ infra/**/*.json
 whatif.json
 analyze.ps1
 *.scratch.*
+.local/  

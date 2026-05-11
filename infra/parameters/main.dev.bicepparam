@@ -24,7 +24,10 @@ param config = {
   enablePurgeProtection: false
   enablePublicNetworkAccess: true
   diagnosticsRetentionDays: 30
-  // Azure AI Search disabled for dev until eastus2 capacity recovers.
+  // Azure AI Search disabled for dev: eastus2 is currently returning
+  // InsufficientResourcesAvailable for new Search services (regional
+  // capacity, not a quota issue). Re-enable when capacity recovers, or
+  // pin Search to an alternate region.
   enableAiSearch: false
   foundry: {
     enabled: true
