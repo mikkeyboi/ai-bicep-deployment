@@ -28,7 +28,9 @@ param(
   [Parameter(Mandatory)] [string]$TenantId,
   [Parameter(Mandatory)] [string]$RepoOwner,
   [Parameter(Mandatory)] [string]$RepoName,
-  [Parameter(Mandatory)] [string[]]$Environments,
+  [Parameter(Mandatory)]
+  [ValidateScript({ if ($_.Count -eq 1 -and $_[0] -match ',') { throw "Pass -Environments as a real array, e.g. -Environments dev,test,prod (no quotes), not a single comma-joined string." }; $true })]
+  [string[]]$Environments,
   [string]$AppDisplayName,
   [switch]$AssignUserAccessAdministrator
 )
@@ -47,7 +49,7 @@ if (-not $az) {
 & $az account set --subscription $SubscriptionId | Out-Null
 
 # --- App registration (idempotent) ---
-$apps = & $az ad app list --display-name $AppDisplayName --output json | ConvertFrom-Json
+$apps = @(& $az ad app list --display-name $AppDisplayName --output json | ConvertFrom-Json)
 if ($apps.Count -gt 0) {
   $app = $apps[0]
   Write-Host "App '$AppDisplayName' exists (appId $($app.appId))." -ForegroundColor Green
@@ -59,7 +61,7 @@ $appId    = $app.appId
 $appObjId = $app.id
 
 # --- Service principal (idempotent) ---
-$sps = & $az ad sp list --filter "appId eq '$appId'" --output json | ConvertFrom-Json
+$sps = @(& $az ad sp list --filter "appId eq '$appId'" --output json | ConvertFrom-Json)
 if ($sps.Count -gt 0) {
   $sp = $sps[0]
 } else {
@@ -69,7 +71,7 @@ if ($sps.Count -gt 0) {
 $spId = $sp.id
 
 # --- Federated credentials, one per environment ---
-$existing = & $az ad app federated-credential list --id $appObjId --output json | ConvertFrom-Json
+$existing = @(& $az ad app federated-credential list --id $appObjId --output json | ConvertFrom-Json)
 foreach ($env in $Environments) {
   $name    = "gh-$RepoName-$env"
   $subject = "repo:$RepoOwner/$RepoName`:environment:$env"
@@ -96,7 +98,7 @@ $scope = "/subscriptions/$SubscriptionId"
 $roles = @('Contributor')
 if ($AssignUserAccessAdministrator) { $roles += 'User Access Administrator' }
 foreach ($role in $roles) {
-  $existingRa = & $az role assignment list --assignee $spId --scope $scope --role $role --output json | ConvertFrom-Json
+  $existingRa = @(& $az role assignment list --assignee $spId --scope $scope --role $role --output json | ConvertFrom-Json)
   if ($existingRa.Count -gt 0) {
     Write-Host "Role '$role' already assigned to SP at $scope." -ForegroundColor Green
   } else {
