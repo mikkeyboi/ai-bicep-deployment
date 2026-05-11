@@ -2,11 +2,17 @@
 
 Bicep + GitHub Actions OIDC provisioning for an Azure AI "all-in-one"
 foundation: AI Foundry (hub + project), Azure OpenAI with frontier
-models, Anthropic Claude in Microsoft Foundry, Storage, Key Vault,
-Log Analytics, App Insights, managed identity, and RBAC.
+models, AI Search, Storage, Key Vault, Log Analytics, App Insights,
+managed identity, and RBAC.
 
 > **Public repo.** No tenant IDs, subscription IDs, keys, or personal
 > data live in source. See `.specify/memory/constitution.md`.
+>
+> **Consumption-only.** Per Constitution Principle VIII (v1.1.0), this
+> stack provisions only first-party Azure resources that bill against
+> Azure consumption / MCA-E credits. Azure Marketplace SaaS offers
+> (e.g., Anthropic Claude in Microsoft Foundry, Cohere, Mistral premium)
+> are out of scope.
 
 ## Quickstart (3 steps)
 

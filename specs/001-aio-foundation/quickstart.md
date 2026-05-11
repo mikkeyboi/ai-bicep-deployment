@@ -21,7 +21,7 @@ az login --tenant <YOUR_TENANT_ID>
 az account set --subscription <YOUR_SUBSCRIPTION_ID>
 ```
 
-## 1. One-time Azure setup: register providers + accept Marketplace
+## 1. One-time Azure setup: register providers
 
 ```pwsh
 az provider register -n Microsoft.CognitiveServices
@@ -31,17 +31,20 @@ az provider register -n Microsoft.KeyVault
 az provider register -n Microsoft.OperationalInsights
 az provider register -n Microsoft.Insights
 az provider register -n Microsoft.ManagedIdentity
+az provider register -n Microsoft.Search
 ```
 
-Accept the **Anthropic Claude in Microsoft Foundry** Marketplace offer
-once for the subscription:
-- Portal → Marketplace → search "Claude in Microsoft Foundry" →
-  *Subscribe* → choose your subscription. (One-time, no resource is
-  created here.)
+> **Note**: Per Constitution VIII (Azure Consumption Billing Only), this
+> stack does not deploy any Azure Marketplace SaaS offers (e.g., Anthropic
+> Claude in Microsoft Foundry, Cohere, Mistral premium tiers). No
+> Marketplace acceptance step is required and the deploy is fully
+> unattended.
 
 If you intend to use **GPT-image-1 / 1.5**, apply via the Microsoft
 limited-access form linked from the Azure OpenAI image-generation docs.
-The `dev` parameter file leaves these disabled by default.
+The `dev` parameter file leaves these disabled by default. They are
+first-party (consumption-billed) Azure OpenAI deployments — Constitution
+VIII does not block them.
 
 ## 2. One-time GitHub ↔ Azure OIDC trust
 
@@ -107,10 +110,11 @@ gh run watch
 Expected resources in `rg-aio-dev-eus2`:
 - 1× AI Foundry hub, 1× project
 - 1× Azure OpenAI account with the configured deployments
-- 1× Foundry Claude-hosting account with the configured Claude deployments
+- 1× AI Search service (when `enableAiSearch: true`)
 - 1× Storage, 1× Key Vault, 1× Log Analytics, 1× App Insights
 - 1× user-assigned MI + role assignments
 - Diagnostic settings on every PaaS resource
+- **No** Marketplace SaaS resources (Constitution VIII).
 
 ## 5. Day-2: add a model
 

@@ -34,8 +34,11 @@ Conventions:
 ## Phase 2 — Shared infra (types, naming, tags, region map)
 
 - **T005** Author `infra/shared/types.bicep` with `environmentConfig`,
-  `openAiConfig`, `claudeConfig`, `modelDeployment`, `connectionSpec`,
+  `openAiConfig`, `modelDeployment`, `connectionSpec`,
   `roleAssignmentSpec` (verbatim shapes from `data-model.md`).
+  > **Amended 2026-05-10 (Constitution v1.1.0)**: `claudeConfig` removed;
+  > `modelFormat` collapses to `'OpenAI'`; `connectionCategory` collapses
+  > to `'AzureOpenAI'`. See research.md D11.
   *Done when*: `bicep build` on a stub consumer compiles cleanly.
 - **T006** Author `infra/shared/naming.bicep`: user-defined functions
   `rg()`, `kv()`, `storage()`, `openai()`, `foundry()`, `project()`,
@@ -61,8 +64,10 @@ CI as part of `validate.yml`.
 
 - **T009** [P] openai-account contract test (rejects `disableLocalAuth=false` when env=prod).
 - **T010** [P] openai-deployment contract test (rejects non-`OpenAI` format).
-- **T011** [P] foundry-claude-account contract test (rejects region not in `{eastus2, swedencentral}`).
-- **T012** [P] foundry-claude-deployment contract test (rejects non-`Anthropic` format).
+- **T011** ~~[P] foundry-claude-account contract test (rejects region not in `{eastus2, swedencentral}`).~~
+  > **SUPERSEDED 2026-05-10**: module removed per Constitution VIII (no Marketplace SaaS).
+- **T012** ~~[P] foundry-claude-deployment contract test (rejects non-`Anthropic` format).~~
+  > **SUPERSEDED 2026-05-10**: module removed per Constitution VIII.
 - **T013** [P] foundry-hub contract test (requires KV + Storage + AI + LA inputs).
 - **T014** [P] foundry-project contract test (requires `hubId`).
 - **T015** [P] foundry-connection contract test (rejects `authType=ApiKey`).
@@ -80,8 +85,10 @@ CI as part of `validate.yml`.
 - **T024** [P] `modules/storage/main.bicep`
 - **T025** `modules/openai-account/main.bicep`
 - **T026** `modules/openai-deployment/main.bicep` (consumes account name)
-- **T027** `modules/foundry-claude-account/main.bicep`
-- **T028** `modules/foundry-claude-deployment/main.bicep`
+- **T027** ~~`modules/foundry-claude-account/main.bicep`~~
+  > **SUPERSEDED 2026-05-10**: removed per Constitution VIII (Azure Consumption Billing Only). Anthropic Claude in Foundry is a Marketplace SaaS offer.
+- **T028** ~~`modules/foundry-claude-deployment/main.bicep`~~
+  > **SUPERSEDED 2026-05-10**: removed alongside T027.
 - **T029** `modules/foundry-hub/main.bicep`
 - **T030** `modules/foundry-project/main.bicep`
 - **T031** `modules/foundry-connection/main.bicep`
@@ -98,7 +105,9 @@ CI as part of `validate.yml`.
   through role assignments (no `listKeys` outputs).
 - **T035** `infra/main.bicep` (sub scope), creating the RG and invoking
   `workload.bicep`. Calls `region-capabilities.assertModelInRegion(...)`
-  for every model in `config.openAi.deployments` and `config.claude.deployments`.
+  for every model in `config.openAi.deployments`.
+  > **Amended 2026-05-10**: no longer iterates `config.claude.deployments`
+  > because `claudeConfig` has been removed (Constitution VIII).
 - **T036** `infra/parameters/main.dev.bicepparam` matching the example
   in `data-model.md`.
 
@@ -151,6 +160,28 @@ CI as part of `validate.yml`.
 - **T050** Final pass: re-run gitleaks on full history; remove any stray TODOs; bump constitution to 1.0.0 PATCH if any wording fixed.
 
 ---
+
+## Phase 10 — Constitution v1.1.0 amendment (Marketplace SaaS removal)
+
+Added 2026-05-10 in response to the new repo constraint that all
+resources MUST bill as Azure consumption. See research.md D11 and the
+Constitution Principle VIII.
+
+- **T051** Bump constitution to v1.1.0 with Principle VIII and Sync Impact Report.
+  *Done when*: `.specify/memory/constitution.md` shows `Version: 1.1.0`.
+- **T052** Update `specs/001-aio-foundation/spec.md`: remove Claude FRs/stories, add FR-019 (consumption-only), add Out of Scope, add SC-007.
+  *Done when*: `git grep -i claude specs/001-aio-foundation/spec.md` returns 0 hits.
+- **T053** Update `research.md` (D3 + D4 rewritten; D11 added).
+- **T054** Update `plan.md` Constitution Check (re-run vs v1.1.0).
+- **T055** Update `data-model.md` (remove `claudeConfig`).
+- **T056** Update `contracts/modules.contract.md` (remove Claude/AIServices module contracts; constrain `connectionCategory` to `AzureOpenAI`).
+- **T057** Update `quickstart.md` (remove Marketplace step; deploy is unattended).
+- **T058** Delete `infra/modules/foundry-claude-account/` and `infra/modules/foundry-claude-deployment/`.
+- **T059** Strip Claude wiring from `infra/workload.bicep` and `infra/main.bicep`; remove `claudeConfig` from `infra/shared/types.bicep`; remove `Anthropic:*` entries from `infra/shared/region-capabilities.bicep`.
+- **T060** Remove `claude { ... }` blocks from `infra/parameters/main.{dev,test,prod}.bicepparam`.
+- **T061** Remove Marketplace reminder from `scripts/preflight.ps1`; drop AIServices-specific check from `scripts/verify-deploy.ps1`; update `README.md`.
+- **T062** Re-run validation chain: `bicep lint`, `bicep build`, `az deployment sub validate`, `az deployment sub what-if`, `gitleaks detect`, privacy grep.
+  *Done when*: all six pass and what-if shows no Claude/AIServices resources.
 
 ### Parallelization map
 

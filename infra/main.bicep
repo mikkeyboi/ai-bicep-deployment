@@ -21,15 +21,15 @@ param deployedAt string = utcNow('yyyy-MM-ddTHH:mm:ssZ')
 // against the static support map. If any are unsupported we emit a
 // deliberately failing nested deployment whose name encodes the
 // violation so the operator sees it in the deployment graph.
+//
+// Per Constitution VIII (v1.1.0), only first-party Azure OpenAI
+// deployments are considered — partner Marketplace models (Anthropic
+// Claude, etc.) were removed.
 
 var openAiModels = [for d in config.openAi.deployments: { format: d.model.format, name: d.model.name }]
-var claudeModels = [for d in config.claude.deployments: { format: d.model.format, name: d.model.name }]
-var requestedModels = union(config.openAi.enabled ? openAiModels : [], config.claude.enabled ? claudeModels : [])
+var requestedModels = config.openAi.enabled ? openAiModels : []
 
-var unsupportedModels = filter(union(
-  config.openAi.enabled ? openAiModels : [],
-  config.claude.enabled ? claudeModels : []
-), m => !isSupported(config.location, m.format, m.name))
+var unsupportedModels = filter(requestedModels, m => !isSupported(config.location, m.format, m.name))
 
 var capabilityOk = empty(unsupportedModels)
 var firstViolation = capabilityOk ? { format: 'OK', name: 'OK' } : unsupportedModels[0]
@@ -108,9 +108,6 @@ output workloadOutputs object = {
   openAiAccountId: workload.outputs.openAiAccountId
   openAiEndpoint: workload.outputs.openAiEndpoint
   openAiDeploymentNames: workload.outputs.openAiDeploymentNames
-  claudeAccountId: workload.outputs.claudeAccountId
-  claudeEndpoint: workload.outputs.claudeEndpoint
-  claudeDeploymentNames: workload.outputs.claudeDeploymentNames
   keyVaultId: workload.outputs.keyVaultId
   keyVaultUri: workload.outputs.keyVaultUri
   storageAccountId: workload.outputs.storageAccountId

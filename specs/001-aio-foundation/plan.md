@@ -6,12 +6,14 @@
 ## Summary
 
 Provision a complete Azure AI "all-in-one" foundation (Foundry hub +
-project, Azure OpenAI with GPT-5/4o/embeddings, Foundry-hosted
-Anthropic Claude, Storage, Key Vault, Log Analytics, App Insights, MI +
-RBAC) using a modular Bicep tree. Two deployment paths share the same
-templates and parameter files: GitHub Actions (OIDC, per-env reviewers)
-and a local pwsh script. No tenant/subscription IDs, keys, or personal
-data live in the repo.
+project, Azure OpenAI with GPT-5/4o/embeddings, AI Search, Storage,
+Key Vault, Log Analytics, App Insights, MI + RBAC) using a modular
+Bicep tree. Two deployment paths share the same templates and parameter
+files: GitHub Actions (OIDC, per-env reviewers) and a local pwsh
+script. No tenant/subscription IDs, keys, or personal data live in the
+repo. Per Constitution VIII (added in v1.1.0), every provisioned
+resource bills as Azure consumption — no Azure Marketplace SaaS
+offerings (e.g., Anthropic Claude in Foundry) are deployed.
 
 ## Technical Context
 
@@ -41,6 +43,7 @@ env, ≤ 10 model deployments per env.
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*Re-run 2026-05-10 against Constitution v1.1.0 (added Principle VIII).*
 
 | Principle | Compliance | Notes |
 |---|---|---|
@@ -51,6 +54,7 @@ env, ≤ 10 model deployments per env.
 | V. Naming & Tagging Discipline | PASS | `infra/shared/naming.bicep` + `tags.bicep`. |
 | VI. Validation Gates | PASS | `validate.yml` runs lint/build/validate/what-if/gitleaks. |
 | VII. Environment Parity | PASS | `main.<env>.bicepparam` is the only per-env diff. |
+| VIII. Azure Consumption Billing Only | PASS | Claude/AIServices module + paramfile entries removed; only first-party RPs (`Microsoft.CognitiveServices` kind=`OpenAI`, `Microsoft.MachineLearningServices`, `Microsoft.Search`, `Microsoft.Storage`, `Microsoft.KeyVault`, `Microsoft.OperationalInsights`, `Microsoft.Insights`, `Microsoft.ManagedIdentity`, RBAC, diagnostic settings) remain. `git grep` for `Microsoft.SaaS` / `claude` / `Anthropic` / `Cohere` / `Mistral` over `infra/**` returns zero hits. |
 
 **Result**: All gates pass. No entries required in Complexity Tracking.
 
@@ -89,8 +93,8 @@ ai-bicep-deployment/
 │   ├── workload.bicep          # RG-scope orchestrator (calls modules)
 │   ├── parameters/
 │   │   ├── main.dev.bicepparam
-│   │   ├── main.test.bicepparam   # added later
-│   │   └── main.prod.bicepparam   # added later
+│   │   ├── main.test.bicepparam
+│   │   └── main.prod.bicepparam
 │   ├── shared/
 │   │   ├── naming.bicep        # User-defined functions for resource names
 │   │   ├── tags.bicep          # Standard tag map builder
@@ -102,8 +106,7 @@ ai-bicep-deployment/
 │       ├── foundry-connection/main.bicep
 │       ├── openai-account/main.bicep
 │       ├── openai-deployment/main.bicep
-│       ├── foundry-claude-account/main.bicep
-│       ├── foundry-claude-deployment/main.bicep
+│       ├── ai-search/main.bicep
 │       ├── storage/main.bicep
 │       ├── key-vault/main.bicep
 │       ├── log-analytics/main.bicep

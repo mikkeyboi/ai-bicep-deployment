@@ -13,7 +13,6 @@ import {
   kv as nameKv
   storage as nameStorage
   openai as nameOpenAi
-  foundry as nameFoundry
   foundryHub as nameFoundryHub
   project as nameProject
   search as nameSearch
@@ -32,7 +31,6 @@ var miName    = nameMi        (config.workloadName, config.environment, config.l
 var kvName    = nameKv        (config.workloadName, config.environment, config.location, instance, uniqueSeed)
 var stName    = nameStorage   (config.workloadName, config.environment, config.location, instance, uniqueSeed)
 var oaiName   = nameOpenAi    (config.workloadName, config.environment, config.location, instance, uniqueSeed)
-var fdyName   = nameFoundry   (config.workloadName, config.environment, config.location, instance, uniqueSeed)
 var hubName   = nameFoundryHub(config.workloadName, config.environment, config.location, instance)
 var projName  = nameProject   (config.workloadName, config.environment, config.location, instance)
 var srchName  = nameSearch    (config.workloadName, config.environment, config.location, instance, uniqueSeed)
@@ -126,29 +124,12 @@ module oaiDeps 'modules/openai-deployment/main.bicep' = [for d in config.openAi.
   dependsOn: [ oai ]
 }]
 
-// ----- Claude (Foundry AIServices) account + deployments -----
-
-module fdy 'modules/foundry-claude-account/main.bicep' = if (config.claude.enabled) {
-  name: 'fdy'
-  params: {
-    name: fdyName
-    location: config.location
-    tags: tags
-    customSubdomain: fdyName
-    publicNetworkAccess: pnaResource
-  }
-}
-
-module fdyDeps 'modules/foundry-claude-deployment/main.bicep' = [for d in config.claude.deployments: if (config.claude.enabled) {
-  name: 'fdyd-${d.name}'
-  params: {
-    accountName: fdyName
-    deployment: d
-  }
-  dependsOn: [ fdy ]
-}]
-
 // ----- Foundry hub + project -----
+//
+// Constitution VIII (v1.1.0): the prior Claude/AIServices account and
+// deployments were removed because Anthropic Claude in Microsoft Foundry
+// is a Marketplace SaaS offer that bills outside Azure consumption
+// credits. Only the first-party Azure OpenAI account remains.
 
 module hub 'modules/foundry-hub/main.bicep' = {
   name: 'hub'
@@ -174,7 +155,7 @@ module proj 'modules/foundry-project/main.bicep' = {
   }
 }
 
-// ----- Foundry connections to OpenAI + Claude accounts -----
+// ----- Foundry connection to OpenAI account (only) -----
 
 module connOai 'modules/foundry-connection/main.bicep' = if (config.openAi.enabled) {
   name: 'conn-oai'
@@ -184,20 +165,6 @@ module connOai 'modules/foundry-connection/main.bicep' = if (config.openAi.enabl
       name: 'aoai-conn'
       category: 'AzureOpenAI'
       targetResourceId: oai!.outputs.id
-      authType: 'AAD'
-    }
-  }
-  dependsOn: [ hub ]
-}
-
-module connFdy 'modules/foundry-connection/main.bicep' = if (config.claude.enabled) {
-  name: 'conn-fdy'
-  params: {
-    hubName: hubName
-    connection: {
-      name: 'aiservices-conn'
-      category: 'AIServices'
-      targetResourceId: fdy!.outputs.id
       authType: 'AAD'
     }
   }
@@ -217,19 +184,6 @@ module raOpenAi 'modules/role-assignment/main.bicep' = if (config.openAi.enabled
       scopeResourceId: oai!.outputs.id
       principalType: 'ServicePrincipal'
       description: 'Workload MI -> Azure OpenAI inference'
-    }
-  }
-}
-
-module raFdy 'modules/role-assignment/main.bicep' = if (config.claude.enabled) {
-  name: 'ra-mi-fdy'
-  params: {
-    roleAssignment: {
-      principalId: miPid
-      roleDefinitionIdOrName: 'Cognitive Services User'
-      scopeResourceId: fdy!.outputs.id
-      principalType: 'ServicePrincipal'
-      description: 'Workload MI -> Foundry/Claude inference'
     }
   }
 }
@@ -292,11 +246,6 @@ resource oaiExisting 'Microsoft.CognitiveServices/accounts@2024-10-01' existing 
   dependsOn: [ oai ]
 }
 
-resource fdyExisting 'Microsoft.CognitiveServices/accounts@2024-10-01' existing = if (config.claude.enabled) {
-  name: fdyName
-  dependsOn: [ fdy ]
-}
-
 resource diagKv 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'to-law'
   scope: kvExisting
@@ -326,16 +275,6 @@ resource diagOai 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if
   }
 }
 
-resource diagFdy 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (config.claude.enabled) {
-  name: 'to-law'
-  scope: fdyExisting
-  properties: {
-    workspaceId: law.outputs.id
-    logs: [ { categoryGroup: 'allLogs', enabled: true } ]
-    metrics: [ { category: 'AllMetrics', enabled: true } ]
-  }
-}
-
 // ----- Outputs (key-free) -----
 
 output foundryHubId string = hub.outputs.id
@@ -343,9 +282,6 @@ output foundryProjectId string = proj.outputs.id
 output openAiAccountId string = config.openAi.enabled ? oai!.outputs.id : ''
 output openAiEndpoint string = config.openAi.enabled ? oai!.outputs.endpoint : ''
 output openAiDeploymentNames array = [for d in config.openAi.deployments: d.name]
-output claudeAccountId string = config.claude.enabled ? fdy!.outputs.id : ''
-output claudeEndpoint string = config.claude.enabled ? fdy!.outputs.endpoint : ''
-output claudeDeploymentNames array = [for d in config.claude.deployments: d.name]
 output keyVaultId string = kv.outputs.id
 output keyVaultUri string = kv.outputs.uri
 output storageAccountId string = sa.outputs.id

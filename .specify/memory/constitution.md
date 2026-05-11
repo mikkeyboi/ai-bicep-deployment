@@ -1,3 +1,33 @@
+<!--
+Sync Impact Report
+==================
+Version: 1.0.0 -> 1.1.0 (MINOR: new principle VIII added)
+Ratified: 2026-05-10 | Last Amended: 2026-05-10
+
+Changes:
+  + Principle VIII. Azure Consumption Billing Only (NEW)
+    - Forbids Azure Marketplace SaaS offers and any third-party
+      offering that bills outside Azure consumption / MCA-E credits.
+  ~ Wording: no other principles modified.
+
+Affected templates / artifacts re-checked:
+  - specs/001-aio-foundation/spec.md          (FRs + Out of Scope updated)
+  - specs/001-aio-foundation/research.md      (D11 added; D3/D4 rewritten)
+  - specs/001-aio-foundation/plan.md          (Constitution Check re-run)
+  - specs/001-aio-foundation/data-model.md    (claudeConfig removed)
+  - specs/001-aio-foundation/contracts/modules.contract.md (Claude/AIServices contracts removed)
+  - specs/001-aio-foundation/quickstart.md    (Marketplace step removed)
+  - specs/001-aio-foundation/tasks.md         (Claude tasks superseded)
+  - infra/main.bicep, infra/workload.bicep    (Claude wiring removed)
+  - infra/parameters/main.{dev,test,prod}.bicepparam (claude{} removed)
+  - infra/modules/foundry-claude-account, foundry-claude-deployment (deleted)
+  - infra/shared/types.bicep, region-capabilities.bicep (Claude/Anthropic removed)
+  - scripts/preflight.ps1                     (Marketplace reminder removed)
+  - README.md                                 (Claude mentions removed; consumption stance noted)
+
+Follow-ups: none.
+-->
+
 # AI-Bicep-Deployment Constitution
 
 > Governing principles for the `mikkeyboi/ai-bicep-deployment` repository.
@@ -72,6 +102,32 @@ expressed only in `main.<env>.bicepparam` files. A new environment is
 added by creating a parameter file and a GitHub environment — never by
 forking templates.
 
+### VIII. Azure Consumption Billing Only (NON-NEGOTIABLE)
+Every resource provisioned by this repository MUST bill through Azure
+consumption (i.e., be redeemable against Azure credits / MCA-E /
+Microsoft customer-agreement Azure commitments). The following are
+forbidden anywhere in `infra/**`, parameter files, or scripts:
+- **Azure Marketplace SaaS offers** (any `Microsoft.SaaS/resources`,
+  any plan that requires “Subscribe” in Marketplace before deploy).
+- **Third-party Marketplace plans** that bill outside Azure consumption
+  (e.g., partner LLMs sold through Marketplace such as Anthropic Claude
+  in Microsoft Foundry, Cohere Command/Embed, Mistral premium tiers,
+  Databricks workspaces billed through Marketplace, etc.).
+- Any model or service whose deployment requires accepting a
+  Marketplace agreement as a prerequisite.
+
+First-party Azure resources (`Microsoft.CognitiveServices/accounts`
+kind=`OpenAI`, `Microsoft.MachineLearningServices/workspaces`,
+`Microsoft.Search/searchServices`, `Microsoft.Storage`, `Microsoft.KeyVault`,
+`Microsoft.OperationalInsights`, `Microsoft.Insights/components`,
+`Microsoft.ManagedIdentity`, RBAC role assignments, diagnostic settings)
+are allowed because they bill as Azure consumption.
+
+*Rationale*: this repository must remain credit-eligible for the
+operator’s Azure subscription. Marketplace SaaS billing breaks that
+invariant even when the underlying capability is desirable. Reintroducing
+a Marketplace dependency requires an amendment to this principle.
+
 ## Security & Compliance Requirements
 
 - **Key Vault is mandatory** for any secret material an application
@@ -114,4 +170,4 @@ violated principle by number when requesting changes. Runtime guidance
 for AI agents lives in `.github/copilot-instructions.md` and must remain
 consistent with this document.
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-10 | **Last Amended**: 2026-05-10
+**Version**: 1.1.0 | **Ratified**: 2026-05-10 | **Last Amended**: 2026-05-10

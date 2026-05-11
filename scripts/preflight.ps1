@@ -9,7 +9,9 @@
     2. Bicep CLI present
     3. No soft-deleted Key Vault / Cognitive Services account name conflicts
     4. Each requested model is available in the target region (cognitive)
-    5. Marketplace agreement reminder for Anthropic Claude in Foundry
+
+  No Marketplace acceptance step — Constitution VIII (v1.1.0) forbids
+  Marketplace SaaS offers in this repo, so the deploy is fully unattended.
 #>
 
 [CmdletBinding()]
@@ -54,9 +56,5 @@ if ($deletedKv) {
     Write-Host "  WARN: soft-deleted Key Vault '$($_.name)' present in $Location" -ForegroundColor Yellow
   }
 }
-
-Write-Host "[preflight] Anthropic Claude in Foundry: ensure Marketplace offer is accepted." -ForegroundColor Cyan
-Write-Host "  Portal -> Marketplace -> 'Claude in Microsoft Foundry' -> Subscribe."
-Write-Host "  (One-time per subscription; not checkable via CLI without elevated perms.)" -ForegroundColor DarkGray
 
 Write-Host "[preflight] OK" -ForegroundColor Green

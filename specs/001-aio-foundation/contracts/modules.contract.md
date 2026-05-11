@@ -33,23 +33,22 @@ record. These contracts drive the test-first tasks in `tasks.md`.
 - `tags: object`
 
 **Calls (in order)**
-1. `log-analytics`, `app-insights`, `managed-identity`, `key-vault`, `storage`
+1. `log-analytics`, `app-insights`, `managed-identity`, `key-vault`, `storage`, optional `ai-search`
 2. `openai-account` (+ N × `openai-deployment`)
-3. `foundry-claude-account` (+ N × `foundry-claude-deployment`)
-4. `foundry-hub` (passing diagnostics + KV + storage + AI Search if enabled)
-5. `foundry-project`
-6. `foundry-connection` × { openai, claude }
-7. `role-assignment` × N (MI → resources; Foundry MI → KV/Storage)
-8. `diagnostic-settings` × N
+3. `foundry-hub` (passing diagnostics + KV + storage + AI Search if enabled)
+4. `foundry-project`
+5. `foundry-connection` (OpenAI account only; no `AIServices` connection — see Constitution VIII)
+6. `role-assignment` × N (MI → OpenAI, KV, Storage, optional AI Search)
+7. `diagnostic-settings` × N
 
 **Outputs (key-free)**
 - `foundryHubId`, `foundryProjectId`
 - `openAiAccountId`, `openAiEndpoint`, `openAiDeploymentNames: string[]`
-- `claudeAccountId`, `claudeEndpoint`, `claudeDeploymentNames: string[]`
 - `keyVaultId`, `keyVaultUri`
 - `storageAccountId`
 - `managedIdentityId`, `managedIdentityPrincipalId`, `managedIdentityClientId`
 - `logAnalyticsWorkspaceId`, `appInsightsId`
+- `aiSearchId` (empty string when disabled)
 
 ---
 
@@ -83,33 +82,16 @@ record. These contracts drive the test-first tasks in `tasks.md`.
 
 ---
 
-## `modules/foundry-claude-account/main.bicep`
-
-**Inputs**
-- `name: string`, `location: string`, `tags: object`
-- `kind: 'AIServices'` (fixed)
-- `disableLocalAuth: bool` (default `true`)
-
-**Outputs**
-- `id`, `name`, `endpoint`
-
-**Invariants**
-- `location ∈ { 'eastus2', 'swedencentral' }`; otherwise compile-time error.
-
----
-
-## `modules/foundry-claude-deployment/main.bicep`
-
-**Inputs**
-- `accountName: string`, `deployment: modelDeployment`, `tags: object`
-
-**Outputs**
-- `name`, `id`
-
-**Behavior**
-- `model.format` MUST be `'Anthropic'`; asserts otherwise.
-
----
+<!--
+  `modules/foundry-claude-account` and `modules/foundry-claude-deployment`
+  contracts were removed in v1.1.0 of the constitution. Anthropic Claude
+  in Microsoft Foundry is a Marketplace SaaS offer; Constitution
+  Principle VIII forbids Marketplace billing in this repo. The
+  `Microsoft.CognitiveServices/accounts` `kind=AIServices` resource was
+  used solely as a Claude host and is therefore not provisioned. Azure
+  OpenAI uses `kind=OpenAI` (separate, first-party, consumption-billed).
+  See specs/001-aio-foundation/research.md D11.
+-->
 
 ## `modules/foundry-hub/main.bicep`
 
@@ -144,6 +126,9 @@ record. These contracts drive the test-first tasks in `tasks.md`.
 
 **Invariants**
 - `connection.authType == 'AAD'`; reject `ApiKey`.
+- `connection.category == 'AzureOpenAI'`; the `'AIServices'` category is
+  no longer valid because the only consumer (Claude account) was removed
+  per Constitution VIII.
 
 ---
 

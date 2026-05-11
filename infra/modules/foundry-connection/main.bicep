@@ -1,5 +1,5 @@
 // modules/foundry-connection/main.bicep
-metadata description = 'Connection from a Foundry hub to a Cognitive Services account (AzureOpenAI or AIServices), AAD-only.'
+metadata description = 'Connection from a Foundry hub to a Cognitive Services account (AzureOpenAI), AAD-only. AIServices category was removed in v1.1.0 (Constitution VIII).'
 
 import { connectionSpec } from '../../shared/types.bicep'
 

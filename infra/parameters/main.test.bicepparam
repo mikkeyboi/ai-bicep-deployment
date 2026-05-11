@@ -1,6 +1,8 @@
 // infra/parameters/main.test.bicepparam
 // TEST environment (placeholder — copy of dev with test toggles).
 // Update model list / capacity before promoting from dev.
+//
+// Constitution VIII (v1.1.0): first-party Azure OpenAI only.
 
 using '../main.bicep'
 
@@ -26,16 +28,6 @@ param config = {
         name: 'text-embedding-3-large'
         model: { format: 'OpenAI', name: 'text-embedding-3-large', version: '1' }
         sku:   { name: 'Standard', capacity: 60 }
-      }
-    ]
-  }
-  claude: {
-    enabled: true
-    deployments: [
-      {
-        name: 'claude-haiku-4-5'
-        model: { format: 'Anthropic', name: 'claude-haiku-4-5', version: '20251001' }
-        sku:   { name: 'GlobalStandard', capacity: 1 }
       }
     ]
   }

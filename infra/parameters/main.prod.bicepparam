@@ -2,6 +2,8 @@
 // PROD environment (placeholder — TIGHTEN before promoting).
 // Differences from dev: purge protection ON, public network access OFF,
 // no shared-key access on storage (handled by env=='prod' branch in workload).
+//
+// Constitution VIII (v1.1.0): first-party Azure OpenAI only.
 
 using '../main.bicep'
 
@@ -32,21 +34,6 @@ param config = {
         name: 'text-embedding-3-large'
         model: { format: 'OpenAI', name: 'text-embedding-3-large', version: '1' }
         sku:   { name: 'Standard', capacity: 240 }
-      }
-    ]
-  }
-  claude: {
-    enabled: true
-    deployments: [
-      {
-        name: 'claude-sonnet-4-5'
-        model: { format: 'Anthropic', name: 'claude-sonnet-4-5', version: '20250929' }
-        sku:   { name: 'GlobalStandard', capacity: 1 }
-      }
-      {
-        name: 'claude-haiku-4-5'
-        model: { format: 'Anthropic', name: 'claude-haiku-4-5', version: '20251001' }
-        sku:   { name: 'GlobalStandard', capacity: 1 }
       }
     ]
   }

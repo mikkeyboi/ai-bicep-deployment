@@ -1,11 +1,16 @@
 // infra/parameters/main.dev.bicepparam
 // Default development environment.
-// Region: eastus2 — only region with frontier OpenAI text + image + Claude.
+// Region: eastus2 — broadest first-party Azure OpenAI surface (GPT-5,
+// GPT-4o, embeddings, image-gen with limited-access approval).
 // Model versions/SKUs verified via `az cognitiveservices model list --location eastus2`.
 //
 // NOTE: gpt-4o and text-embedding-3-large are only offered as 'Standard'
-// in eastus2 (NOT GlobalStandard). gpt-5-chat and Claude models support
-// 'GlobalStandard'. Image models (gpt-image-1*) are gated; left commented.
+// in eastus2 (NOT GlobalStandard). gpt-5-chat supports 'GlobalStandard'.
+// Image models (gpt-image-1*) are gated; left commented.
+//
+// Constitution VIII (v1.1.0): no Azure Marketplace SaaS offers in this
+// repo. Anthropic Claude / Cohere / Mistral premium tiers in Foundry
+// are out of scope (they bill outside Azure consumption credits).
 
 using '../main.bicep'
 
@@ -38,6 +43,7 @@ param config = {
         sku:   { name: 'Standard', capacity: 120 }
       }
       // ---- Disabled-by-default, parameter-only image models ----
+      // First-party Azure OpenAI; consumption-billed (Constitution VIII OK).
       // Requires Microsoft limited-access approval per subscription.
       // Uncomment once approved.
       // {
@@ -48,28 +54,6 @@ param config = {
       // {
       //   name: 'gpt-image-1-5'
       //   model: { format: 'OpenAI', name: 'gpt-image-1.5', version: '2025-12-16' }
-      //   sku:   { name: 'GlobalStandard', capacity: 1 }
-      // }
-    ]
-  }
-  claude: {
-    enabled: true
-    deployments: [
-      {
-        name: 'claude-sonnet-4-5'
-        model: { format: 'Anthropic', name: 'claude-sonnet-4-5', version: '20250929' }
-        sku:   { name: 'GlobalStandard', capacity: 1 }
-      }
-      {
-        name: 'claude-haiku-4-5'
-        model: { format: 'Anthropic', name: 'claude-haiku-4-5', version: '20251001' }
-        sku:   { name: 'GlobalStandard', capacity: 1 }
-      }
-      // ---- claude-opus-4-7 is not yet listed in eastus2; closest available
-      // is claude-opus-4-5 (preview). Uncomment to enable.
-      // {
-      //   name: 'claude-opus-4-5'
-      //   model: { format: 'Anthropic', name: 'claude-opus-4-5', version: '20251101' }
       //   sku:   { name: 'GlobalStandard', capacity: 1 }
       // }
     ]

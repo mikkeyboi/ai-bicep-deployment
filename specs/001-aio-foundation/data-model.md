@@ -23,9 +23,9 @@ type environmentConfig = {
   owner: string                           // GitHub handle or team slug, NOT email
   costCenter: string                      // free-form, default 'poc'
 
-  // Model surface
+  // Model surface (first-party Azure OpenAI only; partner Marketplace
+  // models are forbidden by Constitution VIII).
   openAi: openAiConfig
-  claude: claudeConfig
 
   // Optional toggles
   enablePurgeProtection: bool             // default true for prod, false otherwise
@@ -43,24 +43,22 @@ type openAiConfig = {
 }
 ```
 
-### `claudeConfig`
-```bicep
-type claudeConfig = {
-  enabled: bool                           // default true
-  // Marketplace subscription must be accepted out-of-band; see quickstart.
-  deployments: modelDeployment[]
-}
-```
+<!--
+  `claudeConfig` was removed in v1.1.0 of the constitution
+  (Principle VIII — Azure Consumption Billing Only). Anthropic Claude in
+  Microsoft Foundry is a Marketplace SaaS offer and bills outside Azure
+  consumption credits. See research.md D11.
+-->
 
 ### `modelDeployment`
-A single OpenAI or partner model deployment.
+A single Azure OpenAI model deployment.
 
 ```bicep
 type modelDeployment = {
   name: string                            // logical deployment name, e.g. 'gpt-5-chat'
   model: {
-    format: ('OpenAI' | 'Anthropic')
-    name: string                          // e.g. 'gpt-5-chat', 'claude-sonnet-4-5'
+    format: 'OpenAI'
+    name: string                          // e.g. 'gpt-5-chat', 'text-embedding-3-large'
     version: string                       // e.g. '2025-08-07' or 'latest'
   }
   sku: {
@@ -78,7 +76,7 @@ Describes a Foundry hub connection to a Cognitive Services account.
 ```bicep
 type connectionSpec = {
   name: string
-  category: ('AzureOpenAI' | 'AIServices')
+  category: 'AzureOpenAI'                 // 'AIServices' removed with Claude module (Constitution VIII)
   targetResourceId: string                // resourceId of the cognitive account
   authType: 'AAD'                         // managed identity / Entra; never 'ApiKey'
 }
@@ -100,12 +98,11 @@ type roleAssignmentSpec = {
 ```
 environmentConfig
  ├── openAi.deployments[*] -> modelDeployment        (deployed under OpenAI account)
- ├── claude.deployments[*] -> modelDeployment        (deployed under Claude/Foundry account)
- └── (implied) one foundry hub + project, connected to both accounts via connectionSpec[]
+ └── (implied) one foundry hub + project, connected to the OpenAI account via connectionSpec
 
-managedIdentity (1) ──< roleAssignmentSpec[*] >── { openAiAccount, claudeAccount, storage, keyVault }
+managedIdentity (1) ──< roleAssignmentSpec[*] >── { openAiAccount, storage, keyVault, aiSearch? }
 foundryHub (1) ──< foundryProject (1..n) >
-foundryHub (1) ──< connectionSpec[*] >── { openAiAccount, claudeAccount }
+foundryHub (1) ──< connectionSpec (1) >── openAiAccount
 ```
 
 ## Validation Rules (enforced in `infra/shared/region-capabilities.bicep`)
@@ -135,19 +132,13 @@ param config = {
   enablePurgeProtection: false
   enablePublicNetworkAccess: true
   diagnosticsRetentionDays: 30
+  enableAiSearch: true
   openAi: {
     enabled: true
     deployments: [
-      { name: 'gpt-5-chat',             model: { format: 'OpenAI',    name: 'gpt-5-chat',             version: 'latest' }, sku: { name: 'GlobalStandard', capacity: 50  } }
-      { name: 'gpt-4o',                 model: { format: 'OpenAI',    name: 'gpt-4o',                 version: 'latest' }, sku: { name: 'GlobalStandard', capacity: 50  } }
-      { name: 'text-embedding-3-large', model: { format: 'OpenAI',    name: 'text-embedding-3-large', version: 'latest' }, sku: { name: 'GlobalStandard', capacity: 120 } }
-    ]
-  }
-  claude: {
-    enabled: true
-    deployments: [
-      { name: 'claude-sonnet-4-5', model: { format: 'Anthropic', name: 'claude-sonnet-4-5', version: 'latest' }, sku: { name: 'GlobalStandard', capacity: 1 } }
-      { name: 'claude-haiku-4-5',  model: { format: 'Anthropic', name: 'claude-haiku-4-5',  version: 'latest' }, sku: { name: 'GlobalStandard', capacity: 1 } }
+      { name: 'gpt-5-chat',             model: { format: 'OpenAI', name: 'gpt-5-chat',             version: '2025-08-07' }, sku: { name: 'GlobalStandard', capacity: 50  } }
+      { name: 'gpt-4o',                 model: { format: 'OpenAI', name: 'gpt-4o',                 version: '2024-11-20' }, sku: { name: 'Standard',       capacity: 50  } }
+      { name: 'text-embedding-3-large', model: { format: 'OpenAI', name: 'text-embedding-3-large', version: '1' },          sku: { name: 'Standard',       capacity: 120 } }
     ]
   }
 }

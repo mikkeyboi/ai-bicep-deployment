@@ -11,8 +11,8 @@ metadata description = 'Shared user-defined types for the AIO foundation.'
 type modelSkuName = 'Standard' | 'GlobalStandard' | 'DataZoneStandard' | 'ProvisionedManaged'
 
 @export()
-@description('Provider/format for a model deployment.')
-type modelFormat = 'OpenAI' | 'Anthropic'
+@description('Provider/format for a model deployment. Constitution VIII (v1.1.0) restricts this stack to first-party Azure OpenAI; Anthropic was removed alongside the Claude module.')
+type modelFormat = 'OpenAI'
 
 @export()
 @description('Auto-upgrade behaviour for a model deployment.')
@@ -40,7 +40,10 @@ type modelDeployment = {
 // ----- Connection from Foundry hub to a Cognitive account -----
 
 @export()
-type connectionCategory = 'AzureOpenAI' | 'AIServices'
+// 'AIServices' was removed in v1.1.0 (Constitution VIII): the only
+// consumer of an AIServices-kind connection was the Claude account, and
+// Marketplace SaaS offers are forbidden in this repo.
+type connectionCategory = 'AzureOpenAI'
 
 @export()
 type connectionSpec = {
@@ -78,11 +81,9 @@ type openAiConfig = {
   deployments: modelDeployment[]
 }
 
-@export()
-type claudeConfig = {
-  enabled: bool
-  deployments: modelDeployment[]
-}
+// `claudeConfig` was removed in constitution v1.1.0 (Principle VIII —
+// Azure Consumption Billing Only). Anthropic Claude in Microsoft Foundry
+// is a Marketplace SaaS offer and bills outside Azure consumption credits.
 
 @export()
 @description('Top-level shape consumed by infra/main.bicep.')
@@ -97,6 +98,5 @@ type environmentConfig = {
   enablePublicNetworkAccess: bool
   diagnosticsRetentionDays: int
   openAi: openAiConfig
-  claude: claudeConfig
   enableAiSearch: bool?
 }

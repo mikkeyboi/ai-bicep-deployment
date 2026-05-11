@@ -34,11 +34,21 @@ foreach ($a in $oai) {
   Write-Host "  $($a.name) -> $($deps.Count) deployment(s): $(($deps | ForEach-Object { $_.name }) -join ', ')"
 }
 
-Write-Host "[verify] Foundry/AIServices account deployments" -ForegroundColor Cyan
-$fdy = $res | Where-Object { $_.type -eq 'Microsoft.CognitiveServices/accounts' -and $_.kind -eq 'AIServices' }
-foreach ($a in $fdy) {
-  $deps = & $az cognitiveservices account deployment list --name $a.name -g $ResourceGroup --output json | ConvertFrom-Json
-  Write-Host "  $($a.name) -> $($deps.Count) deployment(s): $(($deps | ForEach-Object { $_.name }) -join ', ')"
+# Constitution VIII (v1.1.0): no AIServices account is provisioned (it
+# previously hosted Anthropic Claude, a Marketplace SaaS offer). Assert
+# that none is present so a stray deployment is caught.
+Write-Host "[verify] Marketplace / AIServices guard" -ForegroundColor Cyan
+$aisvc = $res | Where-Object { $_.type -eq 'Microsoft.CognitiveServices/accounts' -and $_.kind -eq 'AIServices' }
+if ($aisvc) {
+  throw "Found $($aisvc.Count) AIServices account(s) in $ResourceGroup; this stack is consumption-only (Constitution VIII)."
+} else {
+  Write-Host "  OK (no AIServices accounts)"
+}
+$saas = $res | Where-Object { $_.type -like 'Microsoft.SaaS/*' }
+if ($saas) {
+  throw "Found Microsoft.SaaS resource(s) in $ResourceGroup; Marketplace SaaS is forbidden (Constitution VIII)."
+} else {
+  Write-Host "  OK (no Microsoft.SaaS resources)"
 }
 
 Write-Host "[verify] Key Vault is RBAC mode" -ForegroundColor Cyan

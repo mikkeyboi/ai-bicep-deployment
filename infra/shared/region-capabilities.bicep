@@ -6,10 +6,12 @@
 // returned false should be turned into an explicit deployment failure
 // in main.bicep using a deliberate error condition.
 
-metadata description = 'Static region-capability map for OpenAI and Anthropic model availability.'
+metadata description = 'Static region-capability map for first-party Azure OpenAI model availability. Anthropic / partner Marketplace models are excluded by Constitution VIII (v1.1.0).'
 
 // Supported pairs: location -> set of "<format>:<name>" entries.
 // Verified 2026-05-10 via `az cognitiveservices model list --location <loc>`.
+// Only first-party (`format = 'OpenAI'`) entries appear here; partner /
+// Marketplace formats are forbidden by Constitution Principle VIII.
 @export()
 var supported = {
   eastus2: [
@@ -22,18 +24,10 @@ var supported = {
     // OpenAI image (limited access; parameter-only / disabled by default)
     'OpenAI:gpt-image-1'
     'OpenAI:gpt-image-1.5'
-    // Anthropic Claude in Foundry
-    'Anthropic:claude-sonnet-4-5'
-    'Anthropic:claude-haiku-4-5'
-    'Anthropic:claude-opus-4-5'
-    'Anthropic:claude-opus-4-1'
-    'Anthropic:claude-sonnet-4-6'
   ]
   swedencentral: [
     'OpenAI:gpt-4o'
     'OpenAI:text-embedding-3-large'
-    'Anthropic:claude-sonnet-4-5'
-    'Anthropic:claude-haiku-4-5'
   ]
   canadacentral: [
     'OpenAI:gpt-4o'
