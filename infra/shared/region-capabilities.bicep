@@ -17,6 +17,8 @@ var supported = {
   eastus2: [
     // OpenAI text / embedding (Standard SKU available; GlobalStandard varies)
     'OpenAI:gpt-5-chat'
+    'OpenAI:gpt-4.1'
+    'OpenAI:gpt-4.1-mini'
     'OpenAI:gpt-4o'
     'OpenAI:gpt-4o-mini'
     'OpenAI:text-embedding-3-large'

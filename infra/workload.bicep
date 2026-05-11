@@ -115,6 +115,7 @@ module oai 'modules/openai-account/main.bicep' = if (config.openAi.enabled) {
   }
 }
 
+@batchSize(1)
 module oaiDeps 'modules/openai-deployment/main.bicep' = [for d in config.openAi.deployments: if (config.openAi.enabled) {
   name: 'oaid-${d.name}'
   params: {

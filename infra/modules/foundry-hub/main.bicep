@@ -39,6 +39,7 @@ resource hub 'Microsoft.MachineLearningServices/workspaces@2024-10-01' = {
 
 output id string = hub.id
 output name string = hub.name
-output principalId string = hub.identity.principalId ?? ''
+@description('Hub system-assigned principalId. Empty when the hub only uses user-assigned identities (current default).')
+output principalId string = contains(hub.identity, 'principalId') ? hub.identity.principalId : ''
 @description('Echoed for downstream wiring; not used by the hub itself.')
 output aiSearchId string = aiSearchId
