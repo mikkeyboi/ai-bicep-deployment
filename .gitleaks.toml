@@ -44,7 +44,7 @@ tags        = ["azure", "storage", "sas"]
 [allowlist]
 description = "Placeholders, example GUIDs, and well-known Azure built-in role IDs."
 paths = [
-  '''(?i)infra/modules/role-assignment/main\.bicep$'''
+  '''(?i)infra[\\/]modules[\\/]role-assignment[\\/]main\.bicep$'''
 ]
 regexes = [
   '''00000000-0000-0000-0000-000000000000''',
