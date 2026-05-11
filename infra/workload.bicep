@@ -1,7 +1,7 @@
 // infra/workload.bicep
 // Resource-group-scope orchestrator. Receives the typed config + tags
 // from main.bicep and invokes every module per
-// specs/001-aio-foundation/contracts/modules.contract.md § workload.
+// specs/002-new-foundry/contracts/modules.contract.md.
 
 targetScope = 'resourceGroup'
 
@@ -12,8 +12,7 @@ import {
   mi as nameMi
   kv as nameKv
   storage as nameStorage
-  openai as nameOpenAi
-  foundryHub as nameFoundryHub
+  foundry as nameFoundry
   project as nameProject
   search as nameSearch
 } from 'shared/naming.bicep'
@@ -25,15 +24,14 @@ param uniqueSeed string
 // ----- Names -----
 var instance = config.?instance ?? ''
 
-var laName    = nameLaw       (config.workloadName, config.environment, config.location, instance)
-var aiName    = nameAi        (config.workloadName, config.environment, config.location, instance)
-var miName    = nameMi        (config.workloadName, config.environment, config.location, instance)
-var kvName    = nameKv        (config.workloadName, config.environment, config.location, instance, uniqueSeed)
-var stName    = nameStorage   (config.workloadName, config.environment, config.location, instance, uniqueSeed)
-var oaiName   = nameOpenAi    (config.workloadName, config.environment, config.location, instance, uniqueSeed)
-var hubName   = nameFoundryHub(config.workloadName, config.environment, config.location, instance)
-var projName  = nameProject   (config.workloadName, config.environment, config.location, instance)
-var srchName  = nameSearch    (config.workloadName, config.environment, config.location, instance, uniqueSeed)
+var laName    = nameLaw    (config.workloadName, config.environment, config.location, instance)
+var aiName    = nameAi     (config.workloadName, config.environment, config.location, instance)
+var miName    = nameMi     (config.workloadName, config.environment, config.location, instance)
+var kvName    = nameKv     (config.workloadName, config.environment, config.location, instance, uniqueSeed)
+var stName    = nameStorage(config.workloadName, config.environment, config.location, instance, uniqueSeed)
+var aifName   = nameFoundry(config.workloadName, config.environment, config.location, instance, uniqueSeed)
+var projName  = nameProject(config.workloadName, config.environment, config.location, instance)
+var srchName  = nameSearch (config.workloadName, config.environment, config.location, instance, uniqueSeed)
 
 var pnaResource = config.enablePublicNetworkAccess ? 'Enabled' : 'Disabled'
 var enableSearch = config.?enableAiSearch ?? false
@@ -102,89 +100,51 @@ module srch 'modules/ai-search/main.bicep' = if (enableSearch) {
   }
 }
 
-// ----- OpenAI account + deployments -----
-
-module oai 'modules/openai-account/main.bicep' = if (config.openAi.enabled) {
-  name: 'oai'
-  params: {
-    name: oaiName
-    location: config.location
-    tags: tags
-    customSubdomain: oaiName
-    publicNetworkAccess: pnaResource
-  }
-}
-
-@batchSize(1)
-module oaiDeps 'modules/openai-deployment/main.bicep' = [for d in config.openAi.deployments: if (config.openAi.enabled) {
-  name: 'oaid-${d.name}'
-  params: {
-    accountName: oaiName
-    deployment: d
-  }
-  dependsOn: [ oai ]
-}]
-
-// ----- Foundry hub + project -----
+// ----- Foundry account + child project + model deployments -----
 //
-// Constitution VIII (v1.1.0): the prior Claude/AIServices account and
-// deployments were removed because Anthropic Claude in Microsoft Foundry
-// is a Marketplace SaaS offer that bills outside Azure consumption
-// credits. Only the first-party Azure OpenAI account remains.
+// Constitution v1.2.0: AI Foundry uses the unified Foundry resource
+// (Microsoft.CognitiveServices kind=AIServices). Models live on the
+// Foundry account itself; the legacy hub workspace + sidecar OpenAI
+// account from feature 001 are gone.
 
-module hub 'modules/foundry-hub/main.bicep' = {
-  name: 'hub'
+module foundry 'modules/foundry-account/main.bicep' = if (config.foundry.enabled) {
+  name: 'aif'
   params: {
-    name: hubName
+    name: aifName
     location: config.location
     tags: tags
-    keyVaultId: kv.outputs.id
-    storageAccountId: sa.outputs.id
-    appInsightsId: appi.outputs.id
-    managedIdentityId: mi.outputs.id
-    aiSearchId: enableSearch ? (srch!.outputs.id) : ''
+    customSubdomain: aifName
+    publicNetworkAccess: pnaResource
+    deployments: config.foundry.deployments
   }
 }
 
-module proj 'modules/foundry-project/main.bicep' = {
-  name: 'proj'
+module foundryProj 'modules/foundry-account/project.bicep' = if (config.foundry.enabled) {
+  name: 'aif-proj'
   params: {
+    accountName: aifName
     name: projName
     location: config.location
     tags: tags
-    hubId: hub.outputs.id
+    displayName: projName
+    projectDescription: '${config.workloadName} ${config.environment} Foundry project'
   }
-}
-
-// ----- Foundry connection to OpenAI account (only) -----
-
-module connOai 'modules/foundry-connection/main.bicep' = if (config.openAi.enabled) {
-  name: 'conn-oai'
-  params: {
-    hubName: hubName
-    connection: {
-      name: 'aoai-conn'
-      category: 'AzureOpenAI'
-      targetResourceId: oai!.outputs.id
-      authType: 'AAD'
-    }
-  }
-  dependsOn: [ hub ]
+  dependsOn: [ foundry ]
 }
 
 // ----- RBAC: grant the workload MI least-privilege roles -----
 
 var miPid = mi.outputs.principalId
 
-module raOpenAi 'modules/role-assignment/main.bicep' = if (config.openAi.enabled) {
-  name: 'ra-mi-oai'
+module raFoundry 'modules/role-assignment/main.bicep' = if (config.foundry.enabled) {
+  name: 'ra-mi-aif'
   params: {
     roleAssignment: {
       principalId: miPid
-      roleDefinitionIdOrName: 'Cognitive Services OpenAI User'
-      scopeResourceId: oai!.outputs.id
+      roleDefinitionIdOrName: 'Cognitive Services User'
+      scopeResourceId: foundry!.outputs.id
       principalType: 'ServicePrincipal'
-      description: 'Workload MI -> Azure OpenAI inference'
+      description: 'Workload MI -> Foundry account inference'
     }
   }
 }
@@ -229,8 +189,6 @@ module raSrch 'modules/role-assignment/main.bicep' = if (enableSearch) {
 }
 
 // ----- Diagnostics on the major PaaS resources -----
-// diagnosticSettings is an extension resource; declare inline scoped
-// to each `existing` resource symbol. Modules can't take resource scope.
 
 resource kvExisting 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: kvName
@@ -242,9 +200,9 @@ resource saExisting 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   dependsOn: [ sa ]
 }
 
-resource oaiExisting 'Microsoft.CognitiveServices/accounts@2024-10-01' existing = if (config.openAi.enabled) {
-  name: oaiName
-  dependsOn: [ oai ]
+resource aifExisting 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = if (config.foundry.enabled) {
+  name: aifName
+  dependsOn: [ foundry ]
 }
 
 resource diagKv 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
@@ -266,9 +224,9 @@ resource diagSt 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   }
 }
 
-resource diagOai 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (config.openAi.enabled) {
+resource diagFoundry 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (config.foundry.enabled) {
   name: 'to-law'
-  scope: oaiExisting
+  scope: aifExisting
   properties: {
     workspaceId: law.outputs.id
     logs: [ { categoryGroup: 'allLogs', enabled: true } ]
@@ -278,11 +236,10 @@ resource diagOai 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if
 
 // ----- Outputs (key-free) -----
 
-output foundryHubId string = hub.outputs.id
-output foundryProjectId string = proj.outputs.id
-output openAiAccountId string = config.openAi.enabled ? oai!.outputs.id : ''
-output openAiEndpoint string = config.openAi.enabled ? oai!.outputs.endpoint : ''
-output openAiDeploymentNames array = [for d in config.openAi.deployments: d.name]
+output foundryAccountId string = config.foundry.enabled ? foundry!.outputs.id : ''
+output foundryAccountEndpoint string = config.foundry.enabled ? foundry!.outputs.endpoint : ''
+output foundryProjectId string = config.foundry.enabled ? foundryProj!.outputs.id : ''
+output foundryDeploymentNames array = [for d in config.foundry.deployments: d.name]
 output keyVaultId string = kv.outputs.id
 output keyVaultUri string = kv.outputs.uri
 output storageAccountId string = sa.outputs.id

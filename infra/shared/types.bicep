@@ -1,17 +1,17 @@
 // infra/shared/types.bicep
 // User-defined types shared across modules and parameter files.
-// See specs/001-aio-foundation/data-model.md for the canonical contract.
+// See specs/002-new-foundry/data-model.md for the canonical contract.
 
-metadata description = 'Shared user-defined types for the AIO foundation.'
+metadata description = 'Shared user-defined types for the AIO foundation (constitution v1.2.0).'
 
-// ----- Model deployment (OpenAI or partner) -----
+// ----- Model deployment -----
 
 @export()
 @description('SKU options for Cognitive Services / Foundry model deployments.')
 type modelSkuName = 'Standard' | 'GlobalStandard' | 'DataZoneStandard' | 'ProvisionedManaged'
 
 @export()
-@description('Provider/format for a model deployment. Constitution VIII (v1.1.0) restricts this stack to first-party Azure OpenAI; Anthropic was removed alongside the Claude module.')
+@description('Provider/format for a model deployment. Constitution VIII restricts this stack to first-party Azure OpenAI models on the unified Foundry account.')
 type modelFormat = 'OpenAI'
 
 @export()
@@ -19,9 +19,9 @@ type modelFormat = 'OpenAI'
 type modelUpgradeOption = 'OnceNewDefaultVersionAvailable' | 'NoAutoUpgrade' | 'OnceCurrentVersionExpired'
 
 @export()
-@description('A single model deployment under an OpenAI- or Foundry-style account.')
+@description('A single model deployment under a Foundry (AIServices) account.')
 type modelDeployment = {
-  @description('Logical deployment name, e.g. "gpt-5-chat".')
+  @description('Logical deployment name, e.g. "gpt-4-1".')
   name: string
   model: {
     format: modelFormat
@@ -35,23 +35,6 @@ type modelDeployment = {
   }
   raiPolicyName: string?
   versionUpgradeOption: modelUpgradeOption?
-}
-
-// ----- Connection from Foundry hub to a Cognitive account -----
-
-@export()
-// 'AIServices' was removed in v1.1.0 (Constitution VIII): the only
-// consumer of an AIServices-kind connection was the Claude account, and
-// Marketplace SaaS offers are forbidden in this repo.
-type connectionCategory = 'AzureOpenAI'
-
-@export()
-type connectionSpec = {
-  name: string
-  category: connectionCategory
-  targetResourceId: string
-  // AAD-only: never use ApiKey-style auth from Foundry to its accounts.
-  authType: 'AAD'
 }
 
 // ----- Role assignment input for the role-assignment module -----
@@ -75,15 +58,12 @@ type roleAssignmentSpec = {
 type envName = 'dev' | 'test' | 'prod'
 
 @export()
-type openAiConfig = {
+@description('Foundry account configuration. Replaces the legacy `openAi` block in v1.2.0; the standalone OpenAI account is gone and models live on the Foundry account itself.')
+type foundryAccountConfig = {
   enabled: bool
   customSubdomain: string?
   deployments: modelDeployment[]
 }
-
-// `claudeConfig` was removed in constitution v1.1.0 (Principle VIII —
-// Azure Consumption Billing Only). Anthropic Claude in Microsoft Foundry
-// is a Marketplace SaaS offer and bills outside Azure consumption credits.
 
 @export()
 @description('Top-level shape consumed by infra/main.bicep.')
@@ -97,6 +77,6 @@ type environmentConfig = {
   enablePurgeProtection: bool
   enablePublicNetworkAccess: bool
   diagnosticsRetentionDays: int
-  openAi: openAiConfig
+  foundry: foundryAccountConfig
   enableAiSearch: bool?
 }

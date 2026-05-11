@@ -17,17 +17,12 @@ param config environmentConfig
 param deployedAt string = utcNow('yyyy-MM-ddTHH:mm:ssZ')
 
 // ---- Region/model capability gate ----
-// Build a flat list of requested (format, name) pairs, then filter
-// against the static support map. If any are unsupported we emit a
-// deliberately failing nested deployment whose name encodes the
-// violation so the operator sees it in the deployment graph.
-//
-// Per Constitution VIII (v1.1.0), only first-party Azure OpenAI
-// deployments are considered — partner Marketplace models (Anthropic
-// Claude, etc.) were removed.
+// Constitution v1.2.0: model deployments live on the unified Foundry
+// account (Microsoft.CognitiveServices kind=AIServices). Same first-
+// party `format=OpenAI` model surface as before.
 
-var openAiModels = [for d in config.openAi.deployments: { format: d.model.format, name: d.model.name }]
-var requestedModels = config.openAi.enabled ? openAiModels : []
+var foundryModels = [for d in config.foundry.deployments: { format: d.model.format, name: d.model.name }]
+var requestedModels = config.foundry.enabled ? foundryModels : []
 
 var unsupportedModels = filter(requestedModels, m => !isSupported(config.location, m.format, m.name))
 
@@ -35,9 +30,6 @@ var capabilityOk = empty(unsupportedModels)
 var firstViolation = capabilityOk ? { format: 'OK', name: 'OK' } : unsupportedModels[0]
 var capabilityMessage = capabilityOk ? 'OK' : missingMessage(config.location, firstViolation.format, firstViolation.name)
 
-// Deliberately-failing nested deployment when any model is unsupported.
-// The deployment references a non-existent resource type so it errors
-// out at deploy time with a name that surfaces the violation.
 resource regionCapabilityFail 'Microsoft.Resources/deployments@2024-03-01' = if (!capabilityOk) {
   name: 'REGION-CAPABILITY-FAIL'
   location: config.location
@@ -103,11 +95,10 @@ output resourceGroupName string = resGroup.name
 output regionCapabilityMessage string = capabilityMessage
 output requestedModelCount int = length(requestedModels)
 output workloadOutputs object = {
-  foundryHubId: workload.outputs.foundryHubId
+  foundryAccountId: workload.outputs.foundryAccountId
+  foundryAccountEndpoint: workload.outputs.foundryAccountEndpoint
   foundryProjectId: workload.outputs.foundryProjectId
-  openAiAccountId: workload.outputs.openAiAccountId
-  openAiEndpoint: workload.outputs.openAiEndpoint
-  openAiDeploymentNames: workload.outputs.openAiDeploymentNames
+  foundryDeploymentNames: workload.outputs.foundryDeploymentNames
   keyVaultId: workload.outputs.keyVaultId
   keyVaultUri: workload.outputs.keyVaultUri
   storageAccountId: workload.outputs.storageAccountId

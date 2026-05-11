@@ -17,7 +17,7 @@ param config = {
   enablePublicNetworkAccess: false
   diagnosticsRetentionDays: 90
   enableAiSearch: true
-  openAi: {
+  foundry: {
     enabled: true
     deployments: [
       {

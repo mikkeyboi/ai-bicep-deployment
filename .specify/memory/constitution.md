@@ -1,6 +1,23 @@
 <!--
 Sync Impact Report
 ==================
+Version: 1.1.0 -> 1.2.0 (MINOR: clarified AI Foundry resource model)
+Ratified: 2026-05-10 | Last Amended: 2026-05-10
+
+Changes (1.2.0):
+  ~ Principle IV clarification (one-liner): AI Foundry uses the
+    unified Foundry resource (Microsoft.CognitiveServices kind=
+    AIServices with child accounts/projects) - hub-based ML
+    workspaces (kind=Hub/Project) are deprecated for this repo.
+  Affected artifacts:
+    - specs/002-new-foundry/* (new spec)
+    - infra/modules/foundry-account/* (new module)
+    - infra/modules/foundry-{hub,project,connection}/* (deleted)
+    - infra/{main,workload}.bicep, infra/parameters/main.dev.bicepparam
+    - infra/shared/{naming,types}.bicep
+
+--- Previous (1.1.0) report retained below ---
+
 Version: 1.0.0 -> 1.1.0 (MINOR: new principle VIII added)
 Ratified: 2026-05-10 | Last Amended: 2026-05-10
 
@@ -72,6 +89,11 @@ scope only when role assignments are deployed).
 - Reusable resources live under `infra/modules/<resource-family>/` and
   expose typed parameters and explicit outputs only — no implicit
   cross-module coupling.
+- AI Foundry uses the unified Foundry resource
+  (`Microsoft.CognitiveServices/accounts` kind=`AIServices` with
+  child `Microsoft.CognitiveServices/accounts/projects`) — hub-based
+  ML workspaces (`Microsoft.MachineLearningServices/workspaces`
+  kind=`Hub`/`Project`) are deprecated for this repo (added v1.2.0).
 - Naming, tagging, and shared types live in `infra/shared/` and are
   consumed via `import` or module reference, never copy-pasted.
 - Hardcoded values (regions, SKUs, model names, capacities) are forbidden
@@ -170,4 +192,4 @@ violated principle by number when requesting changes. Runtime guidance
 for AI agents lives in `.github/copilot-instructions.md` and must remain
 consistent with this document.
 
-**Version**: 1.1.0 | **Ratified**: 2026-05-10 | **Last Amended**: 2026-05-10
+**Version**: 1.2.0 | **Ratified**: 2026-05-10 | **Last Amended**: 2026-05-10
