@@ -50,7 +50,7 @@ resource modelDeployments 'Microsoft.CognitiveServices/accounts/deployments@2025
       name: d.model.name
       version: d.model.version == 'latest' ? null : d.model.version
     }
-    raiPolicyName: d.?raiPolicyName ?? 'Microsoft.Default'
+    raiPolicyName: d.?raiPolicyName
     versionUpgradeOption: d.?versionUpgradeOption ?? 'OnceNewDefaultVersionAvailable'
   }
 }]
