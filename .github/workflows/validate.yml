@@ -66,16 +66,16 @@ jobs:
       - name: Azure login (OIDC)
         uses: azure/login@v2
         with:
-          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          client-id:       ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: az deployment sub validate (output suppressed)
         uses: azure/cli@v2
         env:
           AZ_SUB:    ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          AZ_TEN:    ${{ secrets.AZURE_TENANT_ID }}
-          AZ_LOC:    ${{ secrets.AZURE_LOCATION }}
+          AZ_TEN:    ${{ vars.AZURE_TENANT_ID }}
+          AZ_LOC:    ${{ vars.AZURE_LOCATION }}
           MATRIX_HOSTNAME: ${{ secrets.MATRIX_HOSTNAME }}
         with:
           azcliversion: latest
@@ -109,8 +109,8 @@ jobs:
         uses: azure/cli@v2
         env:
           AZ_SUB:    ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          AZ_TEN:    ${{ secrets.AZURE_TENANT_ID }}
-          AZ_LOC:    ${{ secrets.AZURE_LOCATION }}
+          AZ_TEN:    ${{ vars.AZURE_TENANT_ID }}
+          AZ_LOC:    ${{ vars.AZURE_LOCATION }}
           MATRIX_HOSTNAME: ${{ secrets.MATRIX_HOSTNAME }}
         with:
           azcliversion: latest
