@@ -29,6 +29,22 @@ param config = {
   // capacity, not a quota issue). Re-enable when capacity recovers, or
   // pin Search to an alternate region.
   enableAiSearch: false
+  // Matrix homeserver (feature 003). Hostname sourced at compile time
+  // from $env:MATRIX_HOSTNAME; MUST NOT be hardcoded (Constitution II).
+  enableMatrix: true
+  matrix: {
+    hostname: readEnvironmentVariable('MATRIX_HOSTNAME', '')
+    continuwuityImage: 'forgejo.ellis.link/continuwuation/continuwuity:v0.5.5'
+    cloudflaredImage: 'docker.io/cloudflare/cloudflared:2026.3.0'
+    enableCloudflareTunnel: true
+    minReplicas: 1
+    maxReplicas: 1
+    homeserverCpu: '0.5'
+    homeserverMemory: '1Gi'
+    cloudflaredCpu: '0.25'
+    cloudflaredMemory: '0.5Gi'
+    shareQuotaGiB: 5
+  }
   foundry: {
     enabled: true
     deployments: [

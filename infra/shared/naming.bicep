@@ -100,6 +100,16 @@ func search(workload string, env string, location string, instance string, uniqu
   nameOfUnique('srch', workload, env, location, instance, uniqueSeed)
 
 @export()
+@description('Container Apps Environment.')
+func cae(workload string, env string, location string, instance string) string =>
+  nameOf('cae', workload, env, location, instance)
+
+@export()
+@description('Container App.')
+func ca(workload string, env string, location string, instance string) string =>
+  nameOf('ca', workload, env, location, instance)
+
+@export()
 @description('Key Vault: 3-24 chars, alphanumeric + hyphen, must start with letter.')
 func kv(workload string, env string, location string, instance string, uniqueSeed string) string =>
   take(nameOfUnique('kv', workload, env, location, instance, uniqueSeed), 24)

@@ -15,6 +15,8 @@ import {
   foundry as nameFoundry
   project as nameProject
   search as nameSearch
+  cae as nameCae
+  ca as nameCa
 } from 'shared/naming.bicep'
 
 param config environmentConfig
@@ -35,6 +37,9 @@ var srchName  = nameSearch (config.workloadName, config.environment, config.loca
 
 var pnaResource = config.enablePublicNetworkAccess ? 'Enabled' : 'Disabled'
 var enableSearch = config.?enableAiSearch ?? false
+var enableMatrix = config.?enableMatrix ?? false
+var caeName = nameCae(config.workloadName, config.environment, config.location, instance)
+var caName  = nameCa (config.workloadName, config.environment, config.location, instance)
 
 // ----- Foundational -----
 
@@ -249,3 +254,58 @@ output managedIdentityClientId string = mi.outputs.clientId
 output logAnalyticsWorkspaceId string = law.outputs.id
 output appInsightsId string = appi.outputs.id
 output aiSearchId string = enableSearch ? (srch!.outputs.id) : ''
+
+// ----- Matrix homeserver (feature 003) -----
+
+module matrixShare 'modules/matrix/file-share.bicep' = if (enableMatrix) {
+  name: 'matrix-share'
+  params: {
+    storageAccountName: stName
+    shareName: 'continuwuity-data'
+    quotaGiB: enableMatrix ? config.matrix!.shareQuotaGiB : 5
+  }
+  dependsOn: [ sa ]
+}
+
+module matrixEnv 'modules/matrix/environment.bicep' = if (enableMatrix) {
+  name: 'matrix-env'
+  params: {
+    name: caeName
+    location: config.location
+    tags: tags
+    logAnalyticsWorkspaceId: law.outputs.id
+    storageAccountName: stName
+    fileShareName: 'continuwuity-data'
+    storageMountName: 'continuwuity-data'
+  }
+  dependsOn: [ matrixShare ]
+}
+
+module matrixApp 'modules/matrix/homeserver.bicep' = if (enableMatrix) {
+  name: 'matrix-app'
+  params: {
+    name: caName
+    location: config.location
+    tags: tags
+    environmentId: enableMatrix ? matrixEnv!.outputs.id : ''
+    userAssignedIdentityResourceId: mi.outputs.id
+    userAssignedIdentityClientId: mi.outputs.clientId
+    keyVaultUri: kv.outputs.uri
+    continuwuityImage: enableMatrix ? config.matrix!.continuwuityImage : ''
+    cloudflaredImage: enableMatrix ? config.matrix!.cloudflaredImage : ''
+    enableCloudflareTunnel: enableMatrix ? config.matrix!.enableCloudflareTunnel : false
+    serverName: enableMatrix ? config.matrix!.hostname : 'x'
+    minReplicas: enableMatrix ? config.matrix!.minReplicas : 1
+    maxReplicas: enableMatrix ? config.matrix!.maxReplicas : 1
+    homeserverCpu: enableMatrix ? config.matrix!.homeserverCpu : '0.5'
+    homeserverMemory: enableMatrix ? config.matrix!.homeserverMemory : '1Gi'
+    cloudflaredCpu: enableMatrix ? config.matrix!.cloudflaredCpu : '0.25'
+    cloudflaredMemory: enableMatrix ? config.matrix!.cloudflaredMemory : '0.5Gi'
+    storageMountName: 'continuwuity-data'
+  }
+  dependsOn: [ matrixEnv, raKv ]
+}
+
+output matrixEnabled bool = enableMatrix
+output matrixAppId string = enableMatrix ? matrixApp!.outputs.id : ''
+output matrixAppFqdn string = enableMatrix ? matrixApp!.outputs.fqdn : ''

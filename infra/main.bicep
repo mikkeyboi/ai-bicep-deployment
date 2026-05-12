@@ -26,11 +26,22 @@ var requestedModels = config.foundry.enabled ? foundryModels : []
 
 var unsupportedModels = filter(requestedModels, m => !isSupported(config.location, m.format, m.name))
 
+// Matrix hostname guard: when enableMatrix=true, the hostname must be
+// non-empty. Sourced at compile time from $env:MATRIX_HOSTNAME via the
+// paramfile (Constitution II: hostname is real-name PII, never tracked).
+var matrixOn = config.?enableMatrix ?? false
+var matrixHost = matrixOn ? (config.?matrix.?hostname ?? '') : 'n/a'
+var matrixHostnameOk = !matrixOn || !empty(matrixHost)
+
 var capabilityOk = empty(unsupportedModels)
 var firstViolation = capabilityOk ? { format: 'OK', name: 'OK' } : unsupportedModels[0]
-var capabilityMessage = capabilityOk ? 'OK' : missingMessage(config.location, firstViolation.format, firstViolation.name)
+var capabilityMessage = capabilityOk
+  ? (matrixHostnameOk ? 'OK' : 'MATRIX_HOSTNAME is empty. Set the GitHub Environment variable or pass -MatrixHostname.')
+  : missingMessage(config.location, firstViolation.format, firstViolation.name)
 
-resource regionCapabilityFail 'Microsoft.Resources/deployments@2024-03-01' = if (!capabilityOk) {
+var allGatesOk = capabilityOk && matrixHostnameOk
+
+resource regionCapabilityFail 'Microsoft.Resources/deployments@2024-03-01' = if (!allGatesOk) {
   name: 'REGION-CAPABILITY-FAIL'
   location: config.location
   properties: {
@@ -108,4 +119,7 @@ output workloadOutputs object = {
   logAnalyticsWorkspaceId: workload.outputs.logAnalyticsWorkspaceId
   appInsightsId: workload.outputs.appInsightsId
   aiSearchId: workload.outputs.aiSearchId
+  matrixEnabled: workload.outputs.matrixEnabled
+  matrixAppId: workload.outputs.matrixAppId
+  matrixAppFqdn: workload.outputs.matrixAppFqdn
 }

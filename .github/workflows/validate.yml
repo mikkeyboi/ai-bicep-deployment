@@ -69,6 +69,8 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       - name: az deployment sub validate (dev paramfile)
         uses: azure/cli@v2
+        env:
+          MATRIX_HOSTNAME: ${{ vars.MATRIX_HOSTNAME }}
         with:
           azcliversion: latest
           inlineScript: |
@@ -79,6 +81,8 @@ jobs:
       - name: az deployment sub what-if (dev paramfile)
         id: whatif
         uses: azure/cli@v2
+        env:
+          MATRIX_HOSTNAME: ${{ vars.MATRIX_HOSTNAME }}
         with:
           azcliversion: latest
           inlineScript: |
