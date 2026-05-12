@@ -50,47 +50,121 @@ jobs:
           echo "env=$ENV" >> "$GITHUB_OUTPUT"
           echo "paramfile=infra/parameters/main.$ENV.bicepparam" >> "$GITHUB_OUTPUT"
 
-      - name: az deployment sub validate
+      - name: az deployment sub validate (output suppressed)
         uses: azure/cli@v2
         env:
+          AZ_SUB:    ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZ_TEN:    ${{ vars.AZURE_TENANT_ID }}
+          AZ_LOC:    ${{ vars.AZURE_LOCATION }}
           MATRIX_HOSTNAME: ${{ vars.MATRIX_HOSTNAME }}
+          PARAMFILE: ${{ steps.env.outputs.paramfile }}
         with:
           azcliversion: latest
           inlineScript: |
+            set +e
             az deployment sub validate \
-              --location ${{ vars.AZURE_LOCATION }} \
+              --location "$AZ_LOC" \
               --template-file infra/main.bicep \
-              --parameters ${{ steps.env.outputs.paramfile }}
+              --parameters "$PARAMFILE" \
+              > validate.raw 2>&1
+            rc=$?
+            if [ $rc -ne 0 ]; then
+              echo "::error::validate failed (rc=$rc). Redacted excerpt:"
+              sed \
+                -e "s|$AZ_SUB|<SUB_ID>|g" \
+                -e "s|$AZ_TEN|<TENANT_ID>|g" \
+                -e "s|${MATRIX_HOSTNAME:-__none__}|<MATRIX_HOSTNAME>|g" \
+                -e "s|mikkeyboi|<OWNER>|g" \
+                -e "s|aif-aio-[a-z0-9-]*|<FOUNDRY_ACCT>|g" \
+                -e "s|kv-aio-[a-z0-9-]*|<KV_NAME>|g" \
+                -e "s|st[a-z0-9]*aio[a-z0-9]*|<ST_NAME>|g" \
+                -e "s|rg-aio-[a-z0-9-]*|<RG_NAME>|g" \
+                validate.raw | tail -c 8000
+              exit $rc
+            fi
+            rm -f validate.raw
+            echo "validate: OK"
 
-      - name: az deployment sub what-if
+      - name: az deployment sub what-if (summary only)
         uses: azure/cli@v2
         env:
+          AZ_SUB:    ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZ_TEN:    ${{ vars.AZURE_TENANT_ID }}
+          AZ_LOC:    ${{ vars.AZURE_LOCATION }}
           MATRIX_HOSTNAME: ${{ vars.MATRIX_HOSTNAME }}
+          PARAMFILE: ${{ steps.env.outputs.paramfile }}
         with:
           azcliversion: latest
           inlineScript: |
+            set +e
             az deployment sub what-if \
-              --location ${{ vars.AZURE_LOCATION }} \
+              --location "$AZ_LOC" \
               --template-file infra/main.bicep \
-              --parameters ${{ steps.env.outputs.paramfile }}
+              --parameters "$PARAMFILE" \
+              > whatif.raw 2>&1
+            rc=$?
+            creates=$(grep -c '^[[:space:]]*+ ' whatif.raw || true)
+            modifies=$(grep -c '^[[:space:]]*~ ' whatif.raw || true)
+            deletes=$(grep -c '^[[:space:]]*- ' whatif.raw || true)
+            echo "what-if summary: +$creates creates / ~$modifies modifies / -$deletes deletes"
+            if [ $rc -ne 0 ]; then
+              echo "::error::what-if failed (rc=$rc). Redacted excerpt:"
+              sed \
+                -e "s|$AZ_SUB|<SUB_ID>|g" \
+                -e "s|$AZ_TEN|<TENANT_ID>|g" \
+                -e "s|${MATRIX_HOSTNAME:-__none__}|<MATRIX_HOSTNAME>|g" \
+                -e "s|mikkeyboi|<OWNER>|g" \
+                -e "s|aif-aio-[a-z0-9-]*|<FOUNDRY_ACCT>|g" \
+                -e "s|kv-aio-[a-z0-9-]*|<KV_NAME>|g" \
+                -e "s|st[a-z0-9]*aio[a-z0-9]*|<ST_NAME>|g" \
+                -e "s|rg-aio-[a-z0-9-]*|<RG_NAME>|g" \
+                whatif.raw | tail -c 8000
+              exit $rc
+            fi
+            rm -f whatif.raw
 
-      - name: az deployment sub create
+      - name: az deployment sub create (status only)
         uses: azure/cli@v2
         env:
+          AZ_SUB:    ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZ_TEN:    ${{ vars.AZURE_TENANT_ID }}
+          AZ_LOC:    ${{ vars.AZURE_LOCATION }}
           MATRIX_HOSTNAME: ${{ vars.MATRIX_HOSTNAME }}
+          PARAMFILE: ${{ steps.env.outputs.paramfile }}
+          ENV_NAME:  ${{ steps.env.outputs.env }}
         with:
           azcliversion: latest
           inlineScript: |
-            DEPLOY_NAME="aio-${{ steps.env.outputs.env }}-$(date -u +%Y%m%d-%H%M%S)"
+            set +e
+            DEPLOY_NAME="aio-${ENV_NAME}-$(date -u +%Y%m%d-%H%M%S)"
             az deployment sub create \
               --name "$DEPLOY_NAME" \
-              --location ${{ vars.AZURE_LOCATION }} \
+              --location "$AZ_LOC" \
               --template-file infra/main.bicep \
-              --parameters ${{ steps.env.outputs.paramfile }} \
-              --output json > deploy-output.json
-            jq 'del(.properties.parameters, .properties.outputs.workloadOutputs.value.managedIdentityClientId)' deploy-output.json > deploy-output-sanitized.json || cp deploy-output.json deploy-output-sanitized.json
+              --parameters "$PARAMFILE" \
+              --output none \
+              > create.raw 2>&1
+            rc=$?
+            if [ $rc -ne 0 ]; then
+              echo "::error::deploy failed (rc=$rc). Redacted excerpt:"
+              sed \
+                -e "s|$AZ_SUB|<SUB_ID>|g" \
+                -e "s|$AZ_TEN|<TENANT_ID>|g" \
+                -e "s|${MATRIX_HOSTNAME:-__none__}|<MATRIX_HOSTNAME>|g" \
+                -e "s|mikkeyboi|<OWNER>|g" \
+                -e "s|aif-aio-[a-z0-9-]*|<FOUNDRY_ACCT>|g" \
+                -e "s|kv-aio-[a-z0-9-]*|<KV_NAME>|g" \
+                -e "s|st[a-z0-9]*aio[a-z0-9]*|<ST_NAME>|g" \
+                -e "s|rg-aio-[a-z0-9-]*|<RG_NAME>|g" \
+                create.raw | tail -c 8000
+              rm -f create.raw
+              exit $rc
+            fi
+            rm -f create.raw
+            # Print only the deployment name (no IDs, no params, no outputs).
+            echo "deploy: SUCCESS  name=$DEPLOY_NAME  env=$ENV_NAME"
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: deploy-output-${{ steps.env.outputs.env }}
-          path: deploy-output-sanitized.json
+      # NOTE: deploy-output-sanitized.json artifact upload removed. Even with
+      # `jq` filtering, the deployment output contains resource IDs (and thus
+      # subscription ID, RG name, hostnames). Run `az deployment sub show -n
+      # <name>` locally if you need full output.

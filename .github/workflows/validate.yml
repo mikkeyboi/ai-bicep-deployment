@@ -13,7 +13,9 @@ on:
 permissions:
   id-token: write
   contents: read
-  pull-requests: write
+  # NOTE: no pull-requests: write — we deliberately do NOT post what-if to PR
+  # comments because raw `az` output contains subscription IDs, resource IDs,
+  # hostnames, and other identifiers that would leak if the repo is ever public.
 
 concurrency:
   group: validate-${{ github.ref }}
@@ -34,10 +36,10 @@ jobs:
         run: bicep lint infra/main.bicep
       - name: bicep build
         run: bicep build infra/main.bicep --outdir build/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: arm-template
-          path: build/main.json
+      # NOTE: ARM template artifact intentionally NOT uploaded. Compiled JSON
+      # contains the same identifiers the Bicep does once parameters resolve,
+      # and artifacts are downloadable by anyone with read access to the repo
+      # (including unauthenticated users on a public repo).
 
   gitleaks:
     runs-on: ubuntu-latest
@@ -67,45 +69,83 @@ jobs:
           client-id:       ${{ vars.AZURE_CLIENT_ID }}
           tenant-id:       ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: az deployment sub validate (dev paramfile)
+
+      - name: az deployment sub validate (output suppressed)
         uses: azure/cli@v2
         env:
+          AZ_SUB:    ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZ_TEN:    ${{ vars.AZURE_TENANT_ID }}
+          AZ_LOC:    ${{ vars.AZURE_LOCATION }}
           MATRIX_HOSTNAME: ${{ vars.MATRIX_HOSTNAME }}
         with:
           azcliversion: latest
           inlineScript: |
+            set +e
+            # Run validate, capture stdout+stderr to file, never print raw to log
             az deployment sub validate \
-              --location ${{ vars.AZURE_LOCATION }} \
-              --template-file infra/main.bicep \
-              --parameters infra/parameters/main.dev.bicepparam
-      - name: az deployment sub what-if (dev paramfile)
-        id: whatif
-        uses: azure/cli@v2
-        env:
-          MATRIX_HOSTNAME: ${{ vars.MATRIX_HOSTNAME }}
-        with:
-          azcliversion: latest
-          inlineScript: |
-            az deployment sub what-if \
-              --location ${{ vars.AZURE_LOCATION }} \
+              --location "$AZ_LOC" \
               --template-file infra/main.bicep \
               --parameters infra/parameters/main.dev.bicepparam \
-              > whatif.txt 2>&1 || true
-            head -c 60000 whatif.txt > whatif-trim.txt
-            echo "WHATIF<<EOF" >> "$GITHUB_OUTPUT"
-            cat whatif-trim.txt >> "$GITHUB_OUTPUT"
-            echo "EOF" >> "$GITHUB_OUTPUT"
-      - name: Comment what-if on PR
-        if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
+              > validate.raw 2>&1
+            rc=$?
+            if [ $rc -ne 0 ]; then
+              echo "::error::validate failed (rc=$rc). Raw output suppressed; redacted summary follows."
+              # Redact known identifiers before printing failure detail
+              sed \
+                -e "s|$AZ_SUB|<SUB_ID>|g" \
+                -e "s|$AZ_TEN|<TENANT_ID>|g" \
+                -e "s|${MATRIX_HOSTNAME:-__none__}|<MATRIX_HOSTNAME>|g" \
+                -e "s|mikkeyboi|<OWNER>|g" \
+                -e "s|aif-aio-[a-z0-9-]*|<FOUNDRY_ACCT>|g" \
+                -e "s|kv-aio-[a-z0-9-]*|<KV_NAME>|g" \
+                -e "s|st[a-z0-9]*aio[a-z0-9]*|<ST_NAME>|g" \
+                -e "s|rg-aio-[a-z0-9-]*|<RG_NAME>|g" \
+                validate.raw | tail -c 8000
+              exit $rc
+            fi
+            echo "validate: OK"
+
+      - name: az deployment sub what-if (summary only)
+        uses: azure/cli@v2
+        env:
+          AZ_SUB:    ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZ_TEN:    ${{ vars.AZURE_TENANT_ID }}
+          AZ_LOC:    ${{ vars.AZURE_LOCATION }}
+          MATRIX_HOSTNAME: ${{ vars.MATRIX_HOSTNAME }}
         with:
-          header: bicep-whatif
-          message: |
-            ### Bicep `what-if` (dev)
-            <details><summary>diff</summary>
-
-            ```
-            ${{ steps.whatif.outputs.WHATIF }}
-            ```
-
-            </details>
+          azcliversion: latest
+          inlineScript: |
+            set +e
+            # Use --no-pretty-printer + --result-format ResourceIdOnly is unavailable;
+            # capture full output to a file, never print resource IDs.
+            az deployment sub what-if \
+              --location "$AZ_LOC" \
+              --template-file infra/main.bicep \
+              --parameters infra/parameters/main.dev.bicepparam \
+              > whatif.raw 2>&1
+            rc=$?
+            # Always derive a count summary from the raw output. Never echo raw.
+            creates=$(grep -c '^[[:space:]]*+ ' whatif.raw || true)
+            modifies=$(grep -c '^[[:space:]]*~ ' whatif.raw || true)
+            deletes=$(grep -c '^[[:space:]]*- ' whatif.raw || true)
+            echo "what-if summary: +$creates creates / ~$modifies modifies / -$deletes deletes"
+            if [ "$deletes" -gt 0 ]; then
+              echo "::warning::what-if predicts $deletes deletes — review locally before merging."
+            fi
+            if [ $rc -ne 0 ]; then
+              echo "::error::what-if failed (rc=$rc). Raw output suppressed; redacted excerpt follows."
+              sed \
+                -e "s|$AZ_SUB|<SUB_ID>|g" \
+                -e "s|$AZ_TEN|<TENANT_ID>|g" \
+                -e "s|${MATRIX_HOSTNAME:-__none__}|<MATRIX_HOSTNAME>|g" \
+                -e "s|mikkeyboi|<OWNER>|g" \
+                -e "s|aif-aio-[a-z0-9-]*|<FOUNDRY_ACCT>|g" \
+                -e "s|kv-aio-[a-z0-9-]*|<KV_NAME>|g" \
+                -e "s|st[a-z0-9]*aio[a-z0-9]*|<ST_NAME>|g" \
+                -e "s|rg-aio-[a-z0-9-]*|<RG_NAME>|g" \
+                whatif.raw | tail -c 8000
+              exit $rc
+            fi
+            # Wipe raw before job ends so it cannot leak via any later step
+            rm -f whatif.raw validate.raw
+            echo "Run 'az deployment sub what-if' locally for full diff (it stays on your machine)."
