@@ -65,6 +65,32 @@ type foundryAccountConfig = {
   deployments: modelDeployment[]
 }
 
+// ----- Matrix homeserver (feature 003) -----
+
+@export()
+@description('Matrix homeserver (continuwuity) on ACA + Cloudflare Tunnel.')
+type matrixConfig = {
+  // Public Cloudflare-Tunnel hostname. Sourced from env at compile time;
+  // MUST NOT be hardcoded in a tracked file (Constitution II).
+  hostname: string
+  // Pinned container images (no :latest).
+  continuwuityImage: string
+  cloudflaredImage: string
+  // Sidecar gate. Lets the operator deploy continuwuity alone for a first
+  // pass before the KV tunnel-token secret is set.
+  enableCloudflareTunnel: bool
+  // Replica counts. continuwuity is single-instance (RocksDB).
+  minReplicas: int
+  maxReplicas: int
+  // Container resources.
+  homeserverCpu: string
+  homeserverMemory: string
+  cloudflaredCpu: string
+  cloudflaredMemory: string
+  // File share quota (GiB).
+  shareQuotaGiB: int
+}
+
 @export()
 @description('Top-level shape consumed by infra/main.bicep.')
 type environmentConfig = {
@@ -79,4 +105,6 @@ type environmentConfig = {
   diagnosticsRetentionDays: int
   foundry: foundryAccountConfig
   enableAiSearch: bool?
+  enableMatrix: bool?
+  matrix: matrixConfig?
 }

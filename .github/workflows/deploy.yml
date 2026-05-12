@@ -52,6 +52,8 @@ jobs:
 
       - name: az deployment sub validate
         uses: azure/cli@v2
+        env:
+          MATRIX_HOSTNAME: ${{ vars.MATRIX_HOSTNAME }}
         with:
           azcliversion: latest
           inlineScript: |
@@ -62,6 +64,8 @@ jobs:
 
       - name: az deployment sub what-if
         uses: azure/cli@v2
+        env:
+          MATRIX_HOSTNAME: ${{ vars.MATRIX_HOSTNAME }}
         with:
           azcliversion: latest
           inlineScript: |
@@ -72,6 +76,8 @@ jobs:
 
       - name: az deployment sub create
         uses: azure/cli@v2
+        env:
+          MATRIX_HOSTNAME: ${{ vars.MATRIX_HOSTNAME }}
         with:
           azcliversion: latest
           inlineScript: |

@@ -1,0 +1,22 @@
+# Continuwuity reference config (documentation only)
+#
+# The live continuwuity instance is configured entirely via environment
+# variables set in `infra/modules/matrix/homeserver.bicep`. This file is
+# kept as a human-readable reference of the effective settings. Editing
+# this file does NOT change the deployed config; edit the env vars on the
+# Container App template instead.
+#
+# Verified against https://continuwuity.org/deploying/docker (v0.5.5).
+
+[global]
+server_name = "${MATRIX_HOSTNAME}"        # set via CONTINUWUITY_SERVER_NAME
+database_path = "/var/lib/continuwuity"   # set via CONTINUWUITY_DATABASE_PATH
+address = "0.0.0.0"                       # set via CONTINUWUITY_ADDRESS
+port = 8008                               # set via CONTINUWUITY_PORT
+allow_federation = false                  # private island
+allow_registration = false                # admin-created users only
+allow_check_for_updates = false           # no phone-home
+
+# Federation domain whitelist is moot when allow_federation = false but
+# kept here for defense-in-depth documentation.
+federation_domain_whitelist = []

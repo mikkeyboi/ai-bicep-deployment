@@ -28,6 +28,8 @@ param(
 
   [string]$Location = 'eastus2',
 
+  [string]$MatrixHostname,
+
   [switch]$WhatIf,
 
   [switch]$Yes
@@ -65,6 +67,13 @@ $template   = Join-Path $repoRoot 'infra/main.bicep'
 $paramfile  = Join-Path $repoRoot "infra/parameters/main.$Environment.bicepparam"
 
 if (-not (Test-Path $paramfile)) { throw "Parameter file not found: $paramfile" }
+
+# Matrix hostname: parameterised; never in repo. Pass via -MatrixHostname or
+# pre-set $env:MATRIX_HOSTNAME. The paramfile reads it via
+# readEnvironmentVariable('MATRIX_HOSTNAME', '').
+if ($PSBoundParameters.ContainsKey('MatrixHostname') -and -not [string]::IsNullOrWhiteSpace($MatrixHostname)) {
+  $env:MATRIX_HOSTNAME = $MatrixHostname
+}
 
 $deployName = "aio-$Environment-{0:yyyyMMdd-HHmmss}" -f (Get-Date).ToUniversalTime()
 
