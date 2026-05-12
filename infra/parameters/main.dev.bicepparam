@@ -38,7 +38,9 @@ param config = {
     hostname: readEnvironmentVariable('MATRIX_HOSTNAME', '')
     continuwuityImage: 'forgejo.ellis.link/continuwuation/continuwuity:v0.5.5'
     cloudflaredImage: 'docker.io/cloudflare/cloudflared:2026.3.0'
-    enableCloudflareTunnel: true
+    // Cloudflared sidecar disabled until tunnel token is stashed in KV.
+    // See .local/003-IMPLEMENTATION_REPORT.md for the token-stash command.
+    enableCloudflareTunnel: false
     minReplicas: 1
     maxReplicas: 1
     homeserverCpu: '0.5'
