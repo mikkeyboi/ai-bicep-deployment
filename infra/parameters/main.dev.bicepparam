@@ -31,7 +31,10 @@ param config = {
   enableAiSearch: false
   // Matrix homeserver (feature 003). Hostname sourced at compile time
   // from $env:MATRIX_HOSTNAME; MUST NOT be hardcoded (Constitution II).
-  enableMatrix: true
+  // Matrix temporarily disabled — ACA internal-only env requires an
+  // InfrastructureSubnetId; needs VNet provisioning before re-enabling.
+  // Tracked as a follow-up to feature 003.
+  enableMatrix: false
   matrix: {
     hostname: readEnvironmentVariable('MATRIX_HOSTNAME', '')
     continuwuityImage: 'forgejo.ellis.link/continuwuation/continuwuity:v0.5.5'
