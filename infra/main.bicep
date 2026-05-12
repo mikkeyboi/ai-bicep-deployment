@@ -122,4 +122,5 @@ output workloadOutputs object = {
   matrixEnabled: workload.outputs.matrixEnabled
   matrixAppId: workload.outputs.matrixAppId
   matrixAppFqdn: workload.outputs.matrixAppFqdn
+  matrixVnetId: workload.outputs.matrixVnetId
 }

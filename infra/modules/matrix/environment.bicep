@@ -19,6 +19,9 @@ param fileShareName string
 @description('Logical name used by container apps to reference this storage.')
 param storageMountName string = 'continuwuity-data'
 
+@description('Resource ID of the delegated subnet (Microsoft.App/environments). Required for internal: true ingress.')
+param infrastructureSubnetId string
+
 // Pull workspace customerId + key from the existing LAW resource.
 resource law 'Microsoft.OperationalInsights/workspaces@2022-10-01' existing = {
   name: last(split(logAnalyticsWorkspaceId, '/'))
@@ -42,6 +45,7 @@ resource env 'Microsoft.App/managedEnvironments@2024-03-01' = {
     }
     vnetConfiguration: {
       internal: true
+      infrastructureSubnetId: infrastructureSubnetId
     }
     zoneRedundant: false
   }

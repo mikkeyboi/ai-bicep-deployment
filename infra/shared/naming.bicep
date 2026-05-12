@@ -105,6 +105,11 @@ func cae(workload string, env string, location string, instance string) string =
   nameOf('cae', workload, env, location, instance)
 
 @export()
+@description('Virtual Network.')
+func vnet(workload string, env string, location string, instance string) string =>
+  nameOf('vnet', workload, env, location, instance)
+
+@export()
 @description('Container App.')
 func ca(workload string, env string, location string, instance string) string =>
   nameOf('ca', workload, env, location, instance)

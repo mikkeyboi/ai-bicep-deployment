@@ -1,6 +1,6 @@
 // infra/parameters/main.dev.bicepparam
 // Default development environment.
-// Region: eastus2 — broadest first-party Azure OpenAI surface (GPT-5,
+// Region: eastus2 - broadest first-party Azure OpenAI surface (GPT-5,
 // GPT-4o, embeddings, image-gen with limited-access approval).
 // Model versions/SKUs verified via `az cognitiveservices model list --location eastus2`.
 //
@@ -31,10 +31,9 @@ param config = {
   enableAiSearch: false
   // Matrix homeserver (feature 003). Hostname sourced at compile time
   // from $env:MATRIX_HOSTNAME; MUST NOT be hardcoded (Constitution II).
-  // Matrix temporarily disabled — ACA internal-only env requires an
-  // InfrastructureSubnetId; needs VNet provisioning before re-enabling.
-  // Tracked as a follow-up to feature 003.
-  enableMatrix: false
+  // Matrix homeserver (feature 003). VNet + delegated subnet provisioned
+  // automatically by infra/modules/network when this is true.
+  enableMatrix: true
   matrix: {
     hostname: readEnvironmentVariable('MATRIX_HOSTNAME', '')
     continuwuityImage: 'forgejo.ellis.link/continuwuation/continuwuity:v0.5.5'

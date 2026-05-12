@@ -17,6 +17,7 @@ import {
   search as nameSearch
   cae as nameCae
   ca as nameCa
+  vnet as nameVnet
 } from 'shared/naming.bicep'
 
 param config environmentConfig
@@ -40,6 +41,7 @@ var enableSearch = config.?enableAiSearch ?? false
 var enableMatrix = config.?enableMatrix ?? false
 var caeName = nameCae(config.workloadName, config.environment, config.location, instance)
 var caName  = nameCa (config.workloadName, config.environment, config.location, instance)
+var vnetName = nameVnet(config.workloadName, config.environment, config.location, instance)
 
 // ----- Foundational -----
 
@@ -257,6 +259,17 @@ output aiSearchId string = enableSearch ? (srch!.outputs.id) : ''
 
 // ----- Matrix homeserver (feature 003) -----
 
+// VNet sits behind the same enableMatrix flag so disabling matrix tears
+// the network down too (no orphan cost).
+module matrixNet 'modules/network/main.bicep' = if (enableMatrix) {
+  name: 'matrix-net'
+  params: {
+    name: vnetName
+    location: config.location
+    tags: tags
+  }
+}
+
 module matrixShare 'modules/matrix/file-share.bicep' = if (enableMatrix) {
   name: 'matrix-share'
   params: {
@@ -277,8 +290,9 @@ module matrixEnv 'modules/matrix/environment.bicep' = if (enableMatrix) {
     storageAccountName: stName
     fileShareName: 'continuwuity-data'
     storageMountName: 'continuwuity-data'
+    infrastructureSubnetId: enableMatrix ? matrixNet!.outputs.acaSubnetId : ''
   }
-  dependsOn: [ matrixShare ]
+  dependsOn: [ matrixShare, matrixNet ]
 }
 
 module matrixApp 'modules/matrix/homeserver.bicep' = if (enableMatrix) {
@@ -309,3 +323,4 @@ module matrixApp 'modules/matrix/homeserver.bicep' = if (enableMatrix) {
 output matrixEnabled bool = enableMatrix
 output matrixAppId string = enableMatrix ? matrixApp!.outputs.id : ''
 output matrixAppFqdn string = enableMatrix ? matrixApp!.outputs.fqdn : ''
+output matrixVnetId string = enableMatrix ? matrixNet!.outputs.id : ''
