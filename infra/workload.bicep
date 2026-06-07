@@ -201,18 +201,15 @@ module raFoundry 'modules/role-assignment/main.bicep' = if (config.foundry.enabl
   }
 }
 
-module raFoundry2 'modules/role-assignment/main.bicep' = if (enableSecondaryFoundry) {
-  name: 'ra-mi-aif2'
-  params: {
-    roleAssignment: {
-      principalId: miPid
-      roleDefinitionIdOrName: 'Cognitive Services User'
-      scopeResourceId: foundry2!.outputs.id
-      principalType: 'ServicePrincipal'
-      description: 'Workload MI -> secondary Foundry account inference'
-    }
-  }
-}
+// NOTE (feature 005): no separate role assignment for the secondary
+// (eastus) Foundry account. The role-assignment module assigns at
+// `scope: resourceGroup()` (scopeResourceId only feeds the deterministic
+// name), so `raFoundry` above already grants the workload MI
+// 'Cognitive Services User' across the whole RG — which covers the
+// secondary account too. Adding a second assignment for the same
+// (principal, role, RG-scope) tuple fails at deploy time with
+// RoleAssignmentExists (Azure dedupes by scope+principal+role, not by
+// name). See specs/005-fix-foundry2-rbac/.
 
 module raKv 'modules/role-assignment/main.bicep' = {
   name: 'ra-mi-kv'
