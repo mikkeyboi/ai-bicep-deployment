@@ -43,6 +43,10 @@ constitution, the constitution wins.
 - Tag every taggable resource with `tags(...)` from
   `infra/shared/tags.bicep`.
 - Idempotent role assignment names: `guid(scope, principalId, roleDefinitionId)`.
+- Keep comments terse. State *why*, not *what*; one or two lines is usually
+  enough. Don't restate the code, paste full error messages, or inline `az`
+  command recipes — those belong in the spec's `quickstart.md`/`research.md`.
+  A re-add stub for a gated resource is fine; a paragraph explaining it is not.
 
 ## When asked to deploy or run Azure commands
 

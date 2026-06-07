@@ -51,6 +51,9 @@ param config = {
   }
   foundry: {
     enabled: true
+    // Local auth (API keys) enabled for image-gen experimentation; keys
+    // fetched at runtime, never committed. Entra ID still works alongside.
+    disableLocalAuth: false
     deployments: [
       {
         name: 'gpt-4-1'
@@ -69,39 +72,21 @@ param config = {
       }
     ]
   }
-  // Secondary Foundry account (feature 004): a SECOND AIServices account
-  // in eastus, because the requested image models are NOT available in the
-  // primary eastus2 region. Models attach to the account (single-region),
-  // so an eastus account is required — a project alone cannot change region.
+  // Secondary Foundry account (feature 004): a second AIServices account in
+  // eastus for image models unavailable in eastus2. Models are single-region,
+  // so a separate account (not just a project) is required. Local auth enabled
+  // on this account only; see specs/004 plan.md for the security rationale.
   //
-  // API-key (local) auth is RE-ENABLED on THIS account only
-  // (disableLocalAuth: false); the primary eastus2 account stays Entra-only.
-  // See specs/004-eastus-image-foundry/plan.md Complexity Tracking for the
-  // Security-section deviation rationale. Keys are NEVER committed — fetch at
-  // runtime via `az cognitiveservices account keys list -n <acct> -g <rg>`.
-  //
-  // NOTE on gpt-image-2: removed from this block because preflight returned
-  //   SpecialFeatureOrQuotaIdRequired — "the current subscription does not
-  //   have access to this model 'Format:OpenAI,Name:gpt-image-2,
-  //   Version:2026-04-21'". That is a limited-access REGISTRATION gate
-  //   (aka.ms/oai/access), not a quota conflict with the existing eastus2
-  //   deployment. Re-add the block below once limited access is granted for
-  //   this subscription (and pin the approved version):
-  //     {
-  //       name: 'gpt-image-2'
+  // gpt-image-2 omitted: preflight returns SpecialFeatureOrQuotaIdRequired
+  // (limited-access gate, aka.ms/oai/access — not quota). Re-add once granted:
+  //     { name: 'gpt-image-2'
   //       model: { format: 'OpenAI', name: 'gpt-image-2', version: 'latest' }
-  //       sku:   { name: 'GlobalStandard', capacity: 1 }
-  //     }
-  // gpt-image-2 remains listed in region-capabilities.bicep (eastus DOES
-  // support it; this subscription just isn't registered yet).
-  //
-  // VERIFY MAI version before deploy:
-  //   az cognitiveservices model list --location eastus \
-  //     --query "[?name=='MAI-Image-2.5'].{name:name,format:format,version:version,sku:skus[0].name}" -o table
+  //       sku:   { name: 'GlobalStandard', capacity: 1 } }
+  // It stays in region-capabilities.bicep (eastus supports it; sub isn't registered).
   secondaryFoundry: {
     enabled: true
     location: 'eastus'
-    disableLocalAuth: false   // API keys re-enabled on the eastus account only
+    disableLocalAuth: false
     deployments: [
       {
         name: 'mai-image-2-5'

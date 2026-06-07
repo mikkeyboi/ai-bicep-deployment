@@ -132,6 +132,7 @@ module foundry 'modules/foundry-account/main.bicep' = if (config.foundry.enabled
     tags: tags
     customSubdomain: aifName
     publicNetworkAccess: pnaResource
+    disableLocalAuth: config.foundry.?disableLocalAuth ?? true
     deployments: config.foundry.deployments
   }
 }
