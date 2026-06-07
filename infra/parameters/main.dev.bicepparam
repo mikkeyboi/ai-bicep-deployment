@@ -80,21 +80,29 @@ param config = {
   // Security-section deviation rationale. Keys are NEVER committed — fetch at
   // runtime via `az cognitiveservices account keys list -n <acct> -g <rg>`.
   //
-  // VERIFY before deploy (az/bicep not installed in authoring env):
+  // NOTE on gpt-image-2: removed from this block because preflight returned
+  //   SpecialFeatureOrQuotaIdRequired — "the current subscription does not
+  //   have access to this model 'Format:OpenAI,Name:gpt-image-2,
+  //   Version:2026-04-21'". That is a limited-access REGISTRATION gate
+  //   (aka.ms/oai/access), not a quota conflict with the existing eastus2
+  //   deployment. Re-add the block below once limited access is granted for
+  //   this subscription (and pin the approved version):
+  //     {
+  //       name: 'gpt-image-2'
+  //       model: { format: 'OpenAI', name: 'gpt-image-2', version: 'latest' }
+  //       sku:   { name: 'GlobalStandard', capacity: 1 }
+  //     }
+  // gpt-image-2 remains listed in region-capabilities.bicep (eastus DOES
+  // support it; this subscription just isn't registered yet).
+  //
+  // VERIFY MAI version before deploy:
   //   az cognitiveservices model list --location eastus \
-  //     --query "[?contains(['gpt-image-2','MAI-Image-2.5'], model.name)].{name:model.name,format:model.format,version:model.version,sku:model.skus[0].name}" -o table
-  // gpt-image-2 uses version 'latest' (module maps 'latest' -> null so Azure
-  // picks the current GA version); pin an explicit date once confirmed.
+  //     --query "[?name=='MAI-Image-2.5'].{name:name,format:format,version:version,sku:skus[0].name}" -o table
   secondaryFoundry: {
     enabled: true
     location: 'eastus'
     disableLocalAuth: false   // API keys re-enabled on the eastus account only
     deployments: [
-      {
-        name: 'gpt-image-2'
-        model: { format: 'OpenAI', name: 'gpt-image-2', version: 'latest' }
-        sku:   { name: 'GlobalStandard', capacity: 1 }
-      }
       {
         name: 'mai-image-2-5'
         model: { format: 'Microsoft', name: 'MAI-Image-2.5', version: '2026-06-02' }

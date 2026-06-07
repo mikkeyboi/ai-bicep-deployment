@@ -14,14 +14,15 @@
 - [x] T009 `workload.bicep`: add `raFoundry2` (Cognitive Services User) + `aif2Existing` + `diagFoundry2`.
 - [x] T010 `workload.bicep`: add `secondaryFoundry*` outputs.
 - [x] T011 `main.bicep`: extend capability gate to validate secondary models against `secondaryLocation`; surface `secondaryFoundry*` outputs.
-- [x] T012 `main.dev.bicepparam`: add `secondaryFoundry` block (eastus, 2 image models, `disableLocalAuth: false`).
+- [x] T012 `main.dev.bicepparam`: add `secondaryFoundry` block (eastus, `disableLocalAuth: false`). MAI-Image-2.5 active; gpt-image-2 commented out pending limited-access registration (see T017a).
 
 ## Phase C — Validate
 - [x] T013 `bicep build infra/main.bicep` clean (exit 0; warnings are pre-existing / mirror accepted patterns).
 - [x] T014 `bicep lint infra/main.bicep` clean (exit 0, no error-level diagnostics).
 - [x] T015 Compiled-ARM presence checks: secondary account, both image models, eastus map entry, no NEW listKeys().
 - [x] T016 Privacy grep: 0 real GUIDs / emails / key-shapes introduced.
-- [ ] T017 `az cognitiveservices model list --location eastus` — confirm gpt-image-2 version + MAI-Image-2.5 (2026-06-02) (operator/CI; az not in authoring env).
+- [ ] T017 `az cognitiveservices model list --location eastus` — confirm MAI-Image-2.5 (2026-06-02) (operator/CI; az not in authoring env).
+- [ ] T017a **gpt-image-2 limited-access registration** — request access at `aka.ms/oai/access` for the dev subscription; once granted, uncomment the gpt-image-2 entry in `main.dev.bicepparam` (pin the approved version) and re-run validate/what-if. Blocked by `SpecialFeatureOrQuotaIdRequired` at preflight 2026-06-07.
 - [ ] T018 `az deployment sub validate` against dev paramfile (operator/CI).
 - [ ] T019 `az deployment sub what-if` — confirm additive (creates only; eastus2 unchanged) (operator/CI).
 - [ ] T020 gitleaks scan clean (CI).

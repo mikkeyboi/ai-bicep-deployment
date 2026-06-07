@@ -45,6 +45,15 @@ merely a new project under the existing eastus2 account.
    - `gpt-image-2` (format=`OpenAI`, `GlobalStandard`).
    - `MAI-Image-2.5` (format=`Microsoft`, version `2026-06-02`,
      `GlobalStandard`).
+
+   > **Status (2026-06-07):** `gpt-image-2` is **deferred** — the dev
+   > subscription returned `SpecialFeatureOrQuotaIdRequired` ("does not
+   > have access to this model 'gpt-image-2,Version:2026-04-21'") at
+   > preflight. That is a limited-access **registration** gate
+   > (`aka.ms/oai/access`), not a region or quota-conflict issue. eastus
+   > supports the model, so it stays in `region-capabilities.bicep`; only
+   > the dev paramfile deployment is commented out until access is
+   > granted. `MAI-Image-2.5` deploys now.
 4. **API-key (local) auth is re-enabled on the eastus account only**
    (`disableLocalAuth=false`). The primary eastus2 account remains
    Entra-only (`disableLocalAuth=true`).

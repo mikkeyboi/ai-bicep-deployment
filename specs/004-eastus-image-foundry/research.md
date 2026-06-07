@@ -22,8 +22,20 @@ primary account in eastus2, a **second account in eastus** is required.
 
 | Model | format | version | SKU | eastus | eastus2 |
 |---|---|---|---|---|---|
-| `gpt-image-2` | `OpenAI` | `latest` (pin after `az` check) | `GlobalStandard` | yes (GA in Foundry, May 2026) | no |
+| `gpt-image-2` | `OpenAI` | `latest` → resolves `2026-04-21` | `GlobalStandard` | yes (region-supported) | no |
 | `MAI-Image-2.5` | `Microsoft` | `2026-06-02` | `GlobalStandard` | **yes** | **no** |
+
+> **gpt-image-2 deferred (2026-06-07):** CI preflight (`az deployment sub
+> validate`, OIDC) returned
+> `SpecialFeatureOrQuotaIdRequired: "the current subscription does not
+> have access to this model 'Format:OpenAI,Name:gpt-image-2,
+> Version:2026-04-21'"`. This is a per-subscription **limited-access
+> registration** gate (`aka.ms/oai/access`), distinct from quota — the
+> operator's existing manual eastus2 gpt-image-2 deployment does not
+> grant template-deploy access here. The model is region-supported in
+> eastus, so it remains in `region-capabilities.bicep`; only its dev
+> paramfile entry is commented out until access is approved. `MAI-Image-2.5`
+> validated past preflight and deploys now.
 
 MAI image global-standard regions per Microsoft Learn ("Deploy and use
 MAI image models in Microsoft Foundry"): West Central US, **East US**,
