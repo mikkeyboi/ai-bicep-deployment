@@ -69,4 +69,37 @@ param config = {
       }
     ]
   }
+  // Secondary Foundry account (feature 004): a SECOND AIServices account
+  // in eastus, because the requested image models are NOT available in the
+  // primary eastus2 region. Models attach to the account (single-region),
+  // so an eastus account is required — a project alone cannot change region.
+  //
+  // API-key (local) auth is RE-ENABLED on THIS account only
+  // (disableLocalAuth: false); the primary eastus2 account stays Entra-only.
+  // See specs/004-eastus-image-foundry/plan.md Complexity Tracking for the
+  // Security-section deviation rationale. Keys are NEVER committed — fetch at
+  // runtime via `az cognitiveservices account keys list -n <acct> -g <rg>`.
+  //
+  // VERIFY before deploy (az/bicep not installed in authoring env):
+  //   az cognitiveservices model list --location eastus \
+  //     --query "[?contains(['gpt-image-2','MAI-Image-2.5'], model.name)].{name:model.name,format:model.format,version:model.version,sku:model.skus[0].name}" -o table
+  // gpt-image-2 uses version 'latest' (module maps 'latest' -> null so Azure
+  // picks the current GA version); pin an explicit date once confirmed.
+  secondaryFoundry: {
+    enabled: true
+    location: 'eastus'
+    disableLocalAuth: false   // API keys re-enabled on the eastus account only
+    deployments: [
+      {
+        name: 'gpt-image-2'
+        model: { format: 'OpenAI', name: 'gpt-image-2', version: 'latest' }
+        sku:   { name: 'GlobalStandard', capacity: 1 }
+      }
+      {
+        name: 'mai-image-2-5'
+        model: { format: 'Microsoft', name: 'MAI-Image-2.5', version: '2026-06-02' }
+        sku:   { name: 'GlobalStandard', capacity: 1 }
+      }
+    ]
+  }
 }

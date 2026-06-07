@@ -26,6 +26,13 @@ var requestedModels = config.foundry.enabled ? foundryModels : []
 
 var unsupportedModels = filter(requestedModels, m => !isSupported(config.location, m.format, m.name))
 
+// Secondary Foundry (feature 004): validate its models against ITS region
+// (config.secondaryFoundry.location, e.g. eastus), not the primary region.
+var secondaryEnabled = config.?secondaryFoundry.?enabled ?? false
+var secondaryLocation = config.?secondaryFoundry.?location ?? config.location
+var secondaryModels = secondaryEnabled ? map(config.secondaryFoundry!.deployments, d => { format: d.model.format, name: d.model.name }) : []
+var unsupportedSecondary = filter(secondaryModels, m => !isSupported(secondaryLocation, m.format, m.name))
+
 // Matrix hostname guard: when enableMatrix=true, the hostname must be
 // non-empty. Sourced at compile time from $env:MATRIX_HOSTNAME via the
 // paramfile (Constitution II: hostname is real-name PII, never tracked).
@@ -33,11 +40,15 @@ var matrixOn = config.?enableMatrix ?? false
 var matrixHost = matrixOn ? (config.?matrix.?hostname ?? '') : 'n/a'
 var matrixHostnameOk = !matrixOn || !empty(matrixHost)
 
-var capabilityOk = empty(unsupportedModels)
-var firstViolation = capabilityOk ? { format: 'OK', name: 'OK' } : unsupportedModels[0]
+var capabilityOk = empty(unsupportedModels) && empty(unsupportedSecondary)
+var primaryOk = empty(unsupportedModels)
+var firstViolation = primaryOk
+  ? (empty(unsupportedSecondary) ? { format: 'OK', name: 'OK' } : unsupportedSecondary[0])
+  : unsupportedModels[0]
+var violationLocation = primaryOk ? secondaryLocation : config.location
 var capabilityMessage = capabilityOk
   ? (matrixHostnameOk ? 'OK' : 'MATRIX_HOSTNAME is empty. Set the GitHub Environment variable or pass -MatrixHostname.')
-  : missingMessage(config.location, firstViolation.format, firstViolation.name)
+  : missingMessage(violationLocation, firstViolation.format, firstViolation.name)
 
 var allGatesOk = capabilityOk && matrixHostnameOk
 
@@ -110,6 +121,11 @@ output workloadOutputs object = {
   foundryAccountEndpoint: workload.outputs.foundryAccountEndpoint
   foundryProjectId: workload.outputs.foundryProjectId
   foundryDeploymentNames: workload.outputs.foundryDeploymentNames
+  secondaryFoundryAccountId: workload.outputs.secondaryFoundryAccountId
+  secondaryFoundryAccountEndpoint: workload.outputs.secondaryFoundryAccountEndpoint
+  secondaryFoundryProjectId: workload.outputs.secondaryFoundryProjectId
+  secondaryFoundryLocation: workload.outputs.secondaryFoundryLocation
+  secondaryFoundryDeploymentNames: workload.outputs.secondaryFoundryDeploymentNames
   keyVaultId: workload.outputs.keyVaultId
   keyVaultUri: workload.outputs.keyVaultUri
   storageAccountId: workload.outputs.storageAccountId

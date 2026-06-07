@@ -14,6 +14,21 @@ metadata description = 'Static region-capability map for first-party Azure OpenA
 // Marketplace formats are forbidden by Constitution Principle VIII.
 @export()
 var supported = {
+  eastus: [
+    // OpenAI text / embedding (broadly available in East US)
+    'OpenAI:gpt-4.1'
+    'OpenAI:gpt-4o'
+    'OpenAI:gpt-4o-mini'
+    'OpenAI:text-embedding-3-large'
+    'OpenAI:text-embedding-3-small'
+    // OpenAI image — GPT-image-2 (GA in Foundry, May 2026)
+    'OpenAI:gpt-image-2'
+    // Microsoft MAI image (sold directly by Azure; GlobalStandard).
+    // Per Microsoft Learn, MAI-Image-2.5 global-standard regions include
+    // East US (also West Central US, West US, West Europe, Sweden Central,
+    // South India, UAE North) — and explicitly NOT eastus2.
+    'Microsoft:MAI-Image-2.5'
+  ]
   eastus2: [
     // OpenAI text / embedding (Standard SKU available; GlobalStandard varies)
     'OpenAI:gpt-5-chat'

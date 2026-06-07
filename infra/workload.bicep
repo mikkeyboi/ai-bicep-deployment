@@ -43,6 +43,16 @@ var caeName = nameCae(config.workloadName, config.environment, config.location, 
 var caName  = nameCa (config.workloadName, config.environment, config.location, instance)
 var vnetName = nameVnet(config.workloadName, config.environment, config.location, instance)
 
+// Secondary Foundry (feature 004): an optional second AIServices account
+// in a different region, for models only available outside the primary
+// location (e.g. eastus-only image models gpt-image-2 / MAI-Image-2.5).
+// Its name embeds the secondary region short-code, so it never collides
+// with the primary `aif-…-eus2-…` account.
+var enableSecondaryFoundry = config.?secondaryFoundry.?enabled ?? false
+var secondaryLocation = config.?secondaryFoundry.?location ?? config.location
+var aif2Name  = nameFoundry(config.workloadName, config.environment, secondaryLocation, instance, uniqueSeed)
+var proj2Name = nameProject(config.workloadName, config.environment, secondaryLocation, instance)
+
 // ----- Foundational -----
 
 module law 'modules/log-analytics/main.bicep' = {
@@ -139,6 +149,41 @@ module foundryProj 'modules/foundry-account/project.bicep' = if (config.foundry.
   dependsOn: [ foundry ]
 }
 
+// ----- Secondary Foundry account + project (feature 004) -----
+//
+// Optional second AIServices account in `secondaryLocation` (e.g. eastus)
+// hosting models not available in the primary region. Local auth (API
+// keys) is re-enabled on THIS account only when the paramfile sets
+// secondaryFoundry.disableLocalAuth=false; the primary account stays
+// Entra-only. listKeys() is still never emitted — keys are read at
+// runtime via `az cognitiveservices account keys list`.
+
+module foundry2 'modules/foundry-account/main.bicep' = if (enableSecondaryFoundry) {
+  name: 'aif2'
+  params: {
+    name: aif2Name
+    location: secondaryLocation
+    tags: tags
+    customSubdomain: aif2Name
+    publicNetworkAccess: pnaResource
+    disableLocalAuth: config.?secondaryFoundry.?disableLocalAuth ?? true
+    deployments: enableSecondaryFoundry ? config.secondaryFoundry!.deployments : []
+  }
+}
+
+module foundry2Proj 'modules/foundry-account/project.bicep' = if (enableSecondaryFoundry) {
+  name: 'aif2-proj'
+  params: {
+    accountName: aif2Name
+    name: proj2Name
+    location: secondaryLocation
+    tags: tags
+    displayName: proj2Name
+    projectDescription: '${config.workloadName} ${config.environment} secondary Foundry project (${secondaryLocation})'
+  }
+  dependsOn: [ foundry2 ]
+}
+
 // ----- RBAC: grant the workload MI least-privilege roles -----
 
 var miPid = mi.outputs.principalId
@@ -152,6 +197,19 @@ module raFoundry 'modules/role-assignment/main.bicep' = if (config.foundry.enabl
       scopeResourceId: foundry!.outputs.id
       principalType: 'ServicePrincipal'
       description: 'Workload MI -> Foundry account inference'
+    }
+  }
+}
+
+module raFoundry2 'modules/role-assignment/main.bicep' = if (enableSecondaryFoundry) {
+  name: 'ra-mi-aif2'
+  params: {
+    roleAssignment: {
+      principalId: miPid
+      roleDefinitionIdOrName: 'Cognitive Services User'
+      scopeResourceId: foundry2!.outputs.id
+      principalType: 'ServicePrincipal'
+      description: 'Workload MI -> secondary Foundry account inference'
     }
   }
 }
@@ -212,6 +270,11 @@ resource aifExisting 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' e
   dependsOn: [ foundry ]
 }
 
+resource aif2Existing 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = if (enableSecondaryFoundry) {
+  name: aif2Name
+  dependsOn: [ foundry2 ]
+}
+
 resource diagKv 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'to-law'
   scope: kvExisting
@@ -241,12 +304,27 @@ resource diagFoundry 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' 
   }
 }
 
+resource diagFoundry2 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (enableSecondaryFoundry) {
+  name: 'to-law'
+  scope: aif2Existing
+  properties: {
+    workspaceId: law.outputs.id
+    logs: [ { categoryGroup: 'allLogs', enabled: true } ]
+    metrics: [ { category: 'AllMetrics', enabled: true } ]
+  }
+}
+
 // ----- Outputs (key-free) -----
 
 output foundryAccountId string = config.foundry.enabled ? foundry!.outputs.id : ''
 output foundryAccountEndpoint string = config.foundry.enabled ? foundry!.outputs.endpoint : ''
 output foundryProjectId string = config.foundry.enabled ? foundryProj!.outputs.id : ''
 output foundryDeploymentNames array = [for d in config.foundry.deployments: d.name]
+output secondaryFoundryAccountId string = enableSecondaryFoundry ? foundry2!.outputs.id : ''
+output secondaryFoundryAccountEndpoint string = enableSecondaryFoundry ? foundry2!.outputs.endpoint : ''
+output secondaryFoundryProjectId string = enableSecondaryFoundry ? foundry2Proj!.outputs.id : ''
+output secondaryFoundryLocation string = enableSecondaryFoundry ? secondaryLocation : ''
+output secondaryFoundryDeploymentNames array = enableSecondaryFoundry ? map(config.secondaryFoundry!.deployments, d => d.name) : []
 output keyVaultId string = kv.outputs.id
 output keyVaultUri string = kv.outputs.uri
 output storageAccountId string = sa.outputs.id
