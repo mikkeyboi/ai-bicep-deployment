@@ -18,6 +18,9 @@ import {
   cae as nameCae
   ca as nameCa
   vnet as nameVnet
+  mlWorkspace as nameMlw
+  mlComputeInstance as nameMlCi
+  mlComputeCluster as nameMlCc
 } from 'shared/naming.bicep'
 
 param config environmentConfig
@@ -52,6 +55,25 @@ var enableSecondaryFoundry = config.?secondaryFoundry.?enabled ?? false
 var secondaryLocation = config.?secondaryFoundry.?location ?? config.location
 var aif2Name  = nameFoundry(config.workloadName, config.environment, secondaryLocation, instance, uniqueSeed)
 var proj2Name = nameProject(config.workloadName, config.environment, secondaryLocation, instance)
+
+// Azure ML (feature 007): optional workspace + attached compute. The
+// processor class ('cpu'/'gpu') goes in the name's instance slot, so the
+// CPU targets keep their names when a GPU entry is appended later. Names
+// are resolved HERE (naming-discipline rule) and passed to the module as
+// already-named records.
+var enableMl = config.?machineLearning.?enabled ?? false
+var mlwName = nameMlw(config.workloadName, config.environment, config.location, instance)
+var mlInstances = enableMl ? map(config.machineLearning!.computeInstances, ci => {
+  name: nameMlCi(config.workloadName, config.environment, config.location, ci.processor)
+  vmSize: ci.vmSize
+  idleTimeBeforeShutdown: ci.?idleTimeBeforeShutdown
+}) : []
+var mlClusters = enableMl ? map(config.machineLearning!.computeClusters, cc => {
+  name: nameMlCc(config.workloadName, config.environment, config.location, cc.processor)
+  vmSize: cc.vmSize
+  vmPriority: cc.?vmPriority
+  scale: cc.scale
+}) : []
 
 // ----- Foundational -----
 
@@ -185,6 +207,32 @@ module foundry2Proj 'modules/foundry-account/project.bicep' = if (enableSecondar
   dependsOn: [ foundry2 ]
 }
 
+// ----- Azure Machine Learning workspace + compute (feature 007) -----
+//
+// Optional, additive training workspace (kind=Default — a real ML
+// workspace, NOT a Foundry hub; Foundry stays on CognitiveServices per
+// Constitution IV). Binds the shared storage / Key Vault / App Insights.
+// Datastores are keyless (systemDatastoresAuthMode=identity); the
+// workspace's OWN system-assigned MSI is granted storage + KV roles below.
+// Compute names carry the processor class, so appending a processor='gpu'
+// entry adds GPU capacity with no rename of the cpu targets.
+
+module ml 'modules/machine-learning/main.bicep' = if (enableMl) {
+  name: 'ml'
+  params: {
+    name: mlwName
+    location: config.location
+    tags: tags
+    friendlyName: config.?machineLearning.?friendlyName ?? ''
+    publicNetworkAccess: pnaResource
+    storageAccountId: sa.outputs.id
+    keyVaultId: kv.outputs.id
+    appInsightsId: appi.outputs.id
+    computeInstances: mlInstances
+    computeClusters: mlClusters
+  }
+}
+
 // ----- RBAC: grant the workload MI least-privilege roles -----
 
 var miPid = mi.outputs.principalId
@@ -251,6 +299,56 @@ module raSrch 'modules/role-assignment/main.bicep' = if (enableSearch) {
   }
 }
 
+// ----- RBAC: the ML workspace's OWN system-assigned MSI (feature 007) -----
+//
+// Keyless datastores (systemDatastoresAuthMode=identity) require the
+// workspace identity itself to reach the shared storage over Entra. This
+// is a DIFFERENT principal from the workload MI above, so reusing the same
+// role names does not collide (Azure dedupes by scope+principal+role).
+// Blob = workspaceblobstore; File = workspacefilestore; KV Secrets Officer
+// lets the workspace persist connection secrets it manages.
+
+var mlPid = enableMl ? ml!.outputs.principalId : ''
+
+module raMlBlob 'modules/role-assignment/main.bicep' = if (enableMl) {
+  name: 'ra-ml-blob'
+  params: {
+    roleAssignment: {
+      principalId: mlPid
+      roleDefinitionIdOrName: 'Storage Blob Data Contributor'
+      scopeResourceId: sa.outputs.id
+      principalType: 'ServicePrincipal'
+      description: 'ML workspace MSI -> workspaceblobstore (keyless datastore)'
+    }
+  }
+}
+
+module raMlFile 'modules/role-assignment/main.bicep' = if (enableMl) {
+  name: 'ra-ml-file'
+  params: {
+    roleAssignment: {
+      principalId: mlPid
+      roleDefinitionIdOrName: 'Storage File Data Privileged Contributor'
+      scopeResourceId: sa.outputs.id
+      principalType: 'ServicePrincipal'
+      description: 'ML workspace MSI -> workspacefilestore (keyless datastore)'
+    }
+  }
+}
+
+module raMlKv 'modules/role-assignment/main.bicep' = if (enableMl) {
+  name: 'ra-ml-kv'
+  params: {
+    roleAssignment: {
+      principalId: mlPid
+      roleDefinitionIdOrName: 'Key Vault Secrets Officer'
+      scopeResourceId: kv.outputs.id
+      principalType: 'ServicePrincipal'
+      description: 'ML workspace MSI -> Key Vault connection secrets R/W'
+    }
+  }
+}
+
 // ----- Diagnostics on the major PaaS resources -----
 
 resource kvExisting 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -312,6 +410,21 @@ resource diagFoundry2 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview'
   }
 }
 
+resource mlwExisting 'Microsoft.MachineLearningServices/workspaces@2024-10-01-preview' existing = if (enableMl) {
+  name: mlwName
+  dependsOn: [ ml ]
+}
+
+resource diagMl 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (enableMl) {
+  name: 'to-law'
+  scope: mlwExisting
+  properties: {
+    workspaceId: law.outputs.id
+    logs: [ { categoryGroup: 'allLogs', enabled: true } ]
+    metrics: [ { category: 'AllMetrics', enabled: true } ]
+  }
+}
+
 // ----- Outputs (key-free) -----
 
 output foundryAccountId string = config.foundry.enabled ? foundry!.outputs.id : ''
@@ -332,6 +445,13 @@ output managedIdentityClientId string = mi.outputs.clientId
 output logAnalyticsWorkspaceId string = law.outputs.id
 output appInsightsId string = appi.outputs.id
 output aiSearchId string = enableSearch ? (srch!.outputs.id) : ''
+
+// ----- Azure Machine Learning (feature 007) -----
+output mlEnabled bool = enableMl
+output mlWorkspaceId string = enableMl ? ml!.outputs.id : ''
+output mlWorkspaceName string = enableMl ? ml!.outputs.name : ''
+output mlComputeInstanceNames array = enableMl ? ml!.outputs.computeInstanceNames : []
+output mlComputeClusterNames array = enableMl ? ml!.outputs.computeClusterNames : []
 
 // ----- Matrix homeserver (feature 003) -----
 

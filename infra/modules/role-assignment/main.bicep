@@ -19,6 +19,7 @@ var roleMap = {
   'Cognitive Services OpenAI Contributor':'a001fd3d-188f-4b5d-821b-7da978bf7442'
   'Storage Blob Data Contributor':        'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
   'Storage Blob Data Owner':              'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
+  'Storage File Data Privileged Contributor': '69566ab7-960f-475b-8e7c-b3118f30c6bd'
   'Key Vault Secrets User':               '4633458b-17de-408a-b874-0445c86b69e6'
   'Key Vault Secrets Officer':            'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
   'AzureML Data Scientist':               'f6c7c914-8db3-469d-8ca1-694a8f32e121'

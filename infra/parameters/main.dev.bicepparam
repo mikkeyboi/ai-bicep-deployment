@@ -95,4 +95,45 @@ param config = {
       }
     ]
   }
+  // Azure Machine Learning (feature 007): a standard training workspace in
+  // eastus2 (kind=Default — a real ML workspace, NOT a Foundry hub) plus a
+  // CPU compute instance and a CPU compute cluster. Reuses the shared
+  // storage / Key Vault / App Insights; datastores are keyless
+  // (systemDatastoresAuthMode=identity).
+  //
+  // GPU-READY: the processor class ('cpu'/'gpu') is baked into each compute
+  // name (ci-aio-dev-eus2-cpu, cc-aio-dev-eus2-cpu). To add GPU later, just
+  // append an entry with processor:'gpu' and a GPU vmSize — the CPU targets
+  // keep their names. Example (uncomment once GPU quota is approved):
+  //   computeClusters: [
+  //     { processor:'cpu', vmSize:'Standard_DS3_v2', vmPriority:'Dedicated'
+  //       scale:{ minNodes:0, maxNodes:4, nodeIdleTimeBeforeScaleDown:'PT300S' } }
+  //     { processor:'gpu', vmSize:'Standard_NC6s_v3', vmPriority:'Dedicated'
+  //       scale:{ minNodes:0, maxNodes:2, nodeIdleTimeBeforeScaleDown:'PT300S' } }
+  //   ]
+  // A GPU box/cluster needs the matching NC/ND-series quota in eastus2
+  // (request via the portal "Quotas" blade) before it will deploy.
+  machineLearning: {
+    enabled: true
+    friendlyName: 'AIO dev ML workspace'
+    computeInstances: [
+      {
+        processor: 'cpu'
+        vmSize: 'Standard_DS3_v2'
+        idleTimeBeforeShutdown: 'PT30M'
+      }
+    ]
+    computeClusters: [
+      {
+        processor: 'cpu'
+        vmSize: 'Standard_DS3_v2'
+        vmPriority: 'Dedicated'
+        scale: {
+          minNodes: 0
+          maxNodes: 4
+          nodeIdleTimeBeforeScaleDown: 'PT300S'
+        }
+      }
+    ]
+  }
 }
