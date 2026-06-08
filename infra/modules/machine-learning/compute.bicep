@@ -1,10 +1,8 @@
-// modules/machine-learning/main.bicep
-metadata description = 'Azure Machine Learning workspace (Microsoft.MachineLearningServices/workspaces, kind=Default) with attached compute instances and clusters. Reuses the shared Storage / Key Vault / App Insights; datastores are keyless (systemDatastoresAuthMode=identity) so the workspace MSI authenticates to storage via RBAC. Names are resolved by the caller (workload.bicep) per the naming-discipline rule — this module never constructs names.'
+// modules/machine-learning/compute.bicep
+metadata description = 'AML compute instances + clusters attached to an existing workspace. Deployed AFTER the workspace MSI holds Storage Blob/File Data roles (the caller wires dependsOn on those role assignments) because a ComputeInstance mounts workspacefilestore via the workspace identity DURING its own provisioning — if the file role is not yet present the instance fails with StorageMountError. The cluster (min 0 nodes) does not mount at create, but it shares the ordering for simplicity. Names are resolved by the caller (workload.bicep).'
 
 import { amlComputeScale } from '../../shared/types.bicep'
 
-// Compute inputs arrive with their resource name already resolved by the
-// caller (names come only from infra/shared/naming.bicep).
 @description('Compute instances (single-user dev boxes) with resolved names.')
 type resolvedComputeInstance = {
   name: string
@@ -20,47 +18,16 @@ type resolvedComputeCluster = {
   scale: amlComputeScale
 }
 
-param name string
+@description('Name of the existing workspace to attach compute to.')
+param workspaceName string
 param location string
 param tags object
-
-@description('Optional human-friendly workspace name (no PII — public repo).')
-param friendlyName string = ''
-
-@allowed(['Enabled', 'Disabled'])
-param publicNetworkAccess string = 'Enabled'
-
-@description('Resource IDs of the shared dependencies the workspace binds to.')
-param storageAccountId string
-param keyVaultId string
-param appInsightsId string
 
 param computeInstances resolvedComputeInstance[] = []
 param computeClusters resolvedComputeCluster[] = []
 
-// ----- Workspace -----
-// kind defaults to a standard ("Default") training workspace — NOT a
-// Foundry hub (those live on Microsoft.CognitiveServices, per Constitution
-// IV). systemDatastoresAuthMode='identity' makes the system datastores
-// keyless; the workspace MSI reads storage via RBAC (granted in workload).
-// API: 2024-10-01-preview — systemDatastoresAuthMode is preview-only (not
-// in the 2024-10-01 GA schema). Consistent with the repo's existing use of
-// preview CognitiveServices APIs.
-
-resource ws 'Microsoft.MachineLearningServices/workspaces@2024-10-01-preview' = {
-  name: name
-  location: location
-  tags: tags
-  identity: { type: 'SystemAssigned' }
-  sku: { name: 'Basic', tier: 'Basic' }
-  properties: {
-    friendlyName: empty(friendlyName) ? null : friendlyName
-    storageAccount: storageAccountId
-    keyVault: keyVaultId
-    applicationInsights: appInsightsId
-    systemDatastoresAuthMode: 'identity'
-    publicNetworkAccess: publicNetworkAccess
-  }
+resource ws 'Microsoft.MachineLearningServices/workspaces@2024-10-01-preview' existing = {
+  name: workspaceName
 }
 
 // ----- Compute instances (single-user managed dev boxes) -----
@@ -115,9 +82,5 @@ resource clusters 'Microsoft.MachineLearningServices/workspaces/computes@2024-10
   }
 }]
 
-// NEVER output keys. IDs + endpoints + principalId only.
-output id string = ws.id
-output name string = ws.name
-output principalId string = ws.identity.principalId
 output computeInstanceNames array = [for ci in computeInstances: ci.name]
 output computeClusterNames array = [for cc in computeClusters: cc.name]
