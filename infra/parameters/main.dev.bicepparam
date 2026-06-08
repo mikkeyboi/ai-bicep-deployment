@@ -116,13 +116,18 @@ param config = {
   machineLearning: {
     enabled: true
     friendlyName: 'AIO dev ML workspace'
-    computeInstances: [
-      {
-        processor: 'cpu'
-        vmSize: 'Standard_DS3_v2'
-        idleTimeBeforeShutdown: 'PT30M'
-      }
-    ]
+    // computeInstances DEFERRED (feature 009): a keyless ComputeInstance
+    // mounts workspacefilestore via the workspace MSI DURING create, and
+    // that mount fails with StorageMountError until the 'Storage File Data
+    // Privileged Contributor' grant has propagated to the storage DATA
+    // plane — a gap ARM's natural ordering (~3.5 min) does not cover (3
+    // consecutive deploys failed; see specs/009). The compute CLUSTER below
+    // (minNodes:0) never mounts at create, so it deploys clean. Re-add the
+    // instance once the file-datastore RBAC/propagation fix lands:
+    //   computeInstances: [
+    //     { processor:'cpu', vmSize:'Standard_DS3_v2', idleTimeBeforeShutdown:'PT30M' }
+    //   ]
+    computeInstances: []
     computeClusters: [
       {
         processor: 'cpu'
