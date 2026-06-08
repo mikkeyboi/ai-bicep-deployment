@@ -135,6 +135,11 @@ output workloadOutputs object = {
   logAnalyticsWorkspaceId: workload.outputs.logAnalyticsWorkspaceId
   appInsightsId: workload.outputs.appInsightsId
   aiSearchId: workload.outputs.aiSearchId
+  mlEnabled: workload.outputs.mlEnabled
+  mlWorkspaceId: workload.outputs.mlWorkspaceId
+  mlWorkspaceName: workload.outputs.mlWorkspaceName
+  mlComputeInstanceNames: workload.outputs.mlComputeInstanceNames
+  mlComputeClusterNames: workload.outputs.mlComputeClusterNames
   matrixEnabled: workload.outputs.matrixEnabled
   matrixAppId: workload.outputs.matrixAppId
   matrixAppFqdn: workload.outputs.matrixAppFqdn

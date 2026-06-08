@@ -123,3 +123,18 @@ func kv(workload string, env string, location string, instance string, uniqueSee
 @description('Storage account: 3-24 lowercase alphanumeric, no hyphens.')
 func storage(workload string, env string, location string, instance string, uniqueSeed string) string =>
   toLower(take(replace(nameOfUnique('st', workload, env, location, instance, uniqueSeed), '-', ''), 24))
+
+@export()
+@description('Azure Machine Learning workspace. Name pattern ^[a-zA-Z0-9][a-zA-Z0-9_-]{2,32}$.')
+func mlWorkspace(workload string, env string, location string, instance string) string =>
+  nameOf('mlw', workload, env, location, instance)
+
+@export()
+@description('AML compute instance (single-user dev box). The processor class ("cpu"/"gpu") occupies the instance slot, so a GPU box is added later by appending a config entry — the CPU box never gets renamed. Compute names must start with a letter, be <=24 chars, and must NOT end in -<digits>; the processor suffix satisfies all three. Name: ci-<workload>-<env>-<region>-<processor>.')
+func mlComputeInstance(workload string, env string, location string, processor string) string =>
+  nameOf('ci', workload, env, location, processor)
+
+@export()
+@description('AML compute cluster (autoscale, scales to zero). Processor class in the instance slot (GPU-ready), same naming rules as the compute instance. Name: cc-<workload>-<env>-<region>-<processor>.')
+func mlComputeCluster(workload string, env string, location string, processor string) string =>
+  nameOf('cc', workload, env, location, processor)

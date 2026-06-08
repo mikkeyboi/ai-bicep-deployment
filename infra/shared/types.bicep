@@ -69,6 +69,58 @@ type foundryAccountConfig = {
   deployments: modelDeployment[]
 }
 
+// ----- Azure Machine Learning (feature 007) -----
+
+@export()
+@description('Processor class for an AML compute target. Occupies the naming "instance" slot (ci-/cc-…-<processor>) so a GPU target is added by appending a config entry without ever renaming the CPU one. Adding "gpu" later is purely a paramfile change.')
+type computeProcessor = 'cpu' | 'gpu'
+
+@export()
+@description('AML managed compute scale settings (AmlCompute cluster). minNodes=0 lets the cluster scale to zero so an idle CPU cluster costs nothing; the same shape hosts a future GPU cluster.')
+type amlComputeScale = {
+  @minValue(0)
+  minNodes: int
+  @minValue(1)
+  maxNodes: int
+  @description('ISO 8601 idle duration before scale-down, e.g. "PT120S".')
+  nodeIdleTimeBeforeScaleDown: string
+}
+
+@export()
+@description('A single AML compute instance (single-user managed dev box).')
+type amlComputeInstanceConfig = {
+  @description('Processor class — drives the name (ci-…-<processor>) and the VM family choice. "cpu" now; "gpu" later with no rename.')
+  processor: computeProcessor
+  @description('VM SKU, e.g. "Standard_DS3_v2" (CPU) or "Standard_NC6s_v3" (GPU). Lives only in the paramfile (Constitution IV).')
+  vmSize: string
+  @description('Optional ISO 8601 idle-shutdown timeout, e.g. "PT30M". Omit to disable auto-shutdown.')
+  idleTimeBeforeShutdown: string?
+}
+
+@export()
+@description('A single AML compute cluster (AmlCompute, autoscaling).')
+type amlComputeClusterConfig = {
+  @description('Processor class — drives the name (cc-…-<processor>) and the VM family. "cpu" now; "gpu" later with no rename.')
+  processor: computeProcessor
+  @description('VM SKU, e.g. "Standard_DS3_v2" (CPU) or "Standard_NC6s_v3" (GPU).')
+  vmSize: string
+  @description('Optional VM priority. Defaults to "Dedicated" when omitted; "LowPriority" for cheap pre-emptible nodes.')
+  vmPriority: ('Dedicated' | 'LowPriority')?
+  scale: amlComputeScale
+}
+
+@export()
+@description('Azure Machine Learning workspace + attached compute. Optional and additive: when omitted or enabled=false, no ML resources are deployed and existing environments are unaffected. Reuses the shared storage/Key Vault/App Insights; datastores are keyless (systemDatastoresAuthMode=identity) so the workspace identity authenticates to storage via RBAC — no account keys. Compute lists are GPU-ready: append a processor=gpu entry to add GPU capacity later with no rename of the CPU targets.')
+type machineLearningConfig = {
+  enabled: bool
+  @description('Optional friendly (display) name for the workspace. No PII (public repo).')
+  friendlyName: string?
+  @description('Compute instances (single-user dev boxes) to attach. Empty list = none.')
+  computeInstances: amlComputeInstanceConfig[]
+  @description('Compute clusters (autoscaling managed compute) to attach. Empty list = none.')
+  computeClusters: amlComputeClusterConfig[]
+}
+
 // ----- Matrix homeserver (feature 003) -----
 
 @export()
@@ -113,4 +165,6 @@ type environmentConfig = {
   enableAiSearch: bool?
   enableMatrix: bool?
   matrix: matrixConfig?
+  @description('Optional. Azure Machine Learning workspace + attached compute (feature 007). When omitted or enabled=false, no ML resources are deployed; test/prod that omit it compile and deploy unchanged.')
+  machineLearning: machineLearningConfig?
 }
