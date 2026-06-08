@@ -216,9 +216,16 @@ module foundry2Proj 'modules/foundry-account/project.bicep' = if (enableSecondar
 // workspace's OWN system-assigned MSI is granted storage + KV roles below.
 // Compute names carry the processor class, so appending a processor='gpu'
 // entry adds GPU capacity with no rename of the cpu targets.
+//
+// ORDERING (lesson from the first deploy): workspace -> RBAC grants ->
+// compute. A ComputeInstance mounts workspacefilestore via the workspace
+// MSI DURING its own provisioning, so the 'Storage File Data Privileged
+// Contributor' grant MUST exist first or the instance fails with
+// StorageMountError. The compute module (below the RBAC block) therefore
+// dependsOn the ML role assignments.
 
-module ml 'modules/machine-learning/main.bicep' = if (enableMl) {
-  name: 'ml'
+module mlWs 'modules/machine-learning/workspace.bicep' = if (enableMl) {
+  name: 'ml-ws'
   params: {
     name: mlwName
     location: config.location
@@ -228,8 +235,6 @@ module ml 'modules/machine-learning/main.bicep' = if (enableMl) {
     storageAccountId: sa.outputs.id
     keyVaultId: kv.outputs.id
     appInsightsId: appi.outputs.id
-    computeInstances: mlInstances
-    computeClusters: mlClusters
   }
 }
 
@@ -308,7 +313,7 @@ module raSrch 'modules/role-assignment/main.bicep' = if (enableSearch) {
 // Blob = workspaceblobstore; File = workspacefilestore; KV Secrets Officer
 // lets the workspace persist connection secrets it manages.
 
-var mlPid = enableMl ? ml!.outputs.principalId : ''
+var mlPid = enableMl ? mlWs!.outputs.principalId : ''
 
 module raMlBlob 'modules/role-assignment/main.bicep' = if (enableMl) {
   name: 'ra-ml-blob'
@@ -347,6 +352,25 @@ module raMlKv 'modules/role-assignment/main.bicep' = if (enableMl) {
       description: 'ML workspace MSI -> Key Vault connection secrets R/W'
     }
   }
+}
+
+// ----- ML compute (feature 007) — created AFTER the RBAC grants -----
+//
+// Must run after raMlBlob/raMlFile (and raMlKv) so the workspace MSI can
+// mount workspacefilestore at ComputeInstance create time. Without this
+// dependsOn the instance races the role assignment and fails with
+// StorageMountError (observed on the first deploy).
+
+module mlCompute 'modules/machine-learning/compute.bicep' = if (enableMl) {
+  name: 'ml-compute'
+  params: {
+    workspaceName: mlwName
+    location: config.location
+    tags: tags
+    computeInstances: mlInstances
+    computeClusters: mlClusters
+  }
+  dependsOn: [ mlWs, raMlBlob, raMlFile, raMlKv ]
 }
 
 // ----- Diagnostics on the major PaaS resources -----
@@ -412,7 +436,7 @@ resource diagFoundry2 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview'
 
 resource mlwExisting 'Microsoft.MachineLearningServices/workspaces@2024-10-01-preview' existing = if (enableMl) {
   name: mlwName
-  dependsOn: [ ml ]
+  dependsOn: [ mlWs ]
 }
 
 resource diagMl 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (enableMl) {
@@ -448,10 +472,10 @@ output aiSearchId string = enableSearch ? (srch!.outputs.id) : ''
 
 // ----- Azure Machine Learning (feature 007) -----
 output mlEnabled bool = enableMl
-output mlWorkspaceId string = enableMl ? ml!.outputs.id : ''
-output mlWorkspaceName string = enableMl ? ml!.outputs.name : ''
-output mlComputeInstanceNames array = enableMl ? ml!.outputs.computeInstanceNames : []
-output mlComputeClusterNames array = enableMl ? ml!.outputs.computeClusterNames : []
+output mlWorkspaceId string = enableMl ? mlWs!.outputs.id : ''
+output mlWorkspaceName string = enableMl ? mlWs!.outputs.name : ''
+output mlComputeInstanceNames array = enableMl ? mlCompute!.outputs.computeInstanceNames : []
+output mlComputeClusterNames array = enableMl ? mlCompute!.outputs.computeClusterNames : []
 
 // ----- Matrix homeserver (feature 003) -----
 
