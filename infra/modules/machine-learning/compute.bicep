@@ -61,6 +61,7 @@ resource clusters 'Microsoft.MachineLearningServices/workspaces/computes@2024-10
   name: cc.name
   location: location
   tags: tags
+  identity: { type: 'SystemAssigned' }
   properties: {
     computeType: 'AmlCompute'
     computeLocation: location
@@ -84,3 +85,8 @@ resource clusters 'Microsoft.MachineLearningServices/workspaces/computes@2024-10
 
 output computeInstanceNames array = [for ci in computeInstances: ci.name]
 output computeClusterNames array = [for cc in computeClusters: cc.name]
+
+// Each cluster's system-assigned identity principalId, in declaration order.
+// A job reading the keyless trials datastore authenticates as the COMPUTE
+// identity, so the caller grants these Storage Blob Data Contributor.
+output computeClusterPrincipalIds array = [for (cc, i) in computeClusters: clusters[i].identity.principalId]

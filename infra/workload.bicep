@@ -374,6 +374,32 @@ module mlCompute 'modules/machine-learning/compute.bicep' = if (enableMl) {
   dependsOn: [ mlWs, raMlBlob, raMlFile, raMlKv ]
 }
 
+// ----- ML compute identity -> storage (keyless datastore reads at job time) -----
+//
+// An AmlCompute job that reads a keyless (identity-based) datastore - e.g. the
+// mechinterp trials_datalake - authenticates as the CLUSTER's own MSI, NOT the
+// workspace MSI. Without this grant the run fails with "Identity of the
+// specified managed compute ... is not found". One grant per cluster, created
+// AFTER ml-compute so the principalIds exist. A different principal+name than
+// raMlBlob, so no RoleAssignmentExists collision (Azure dedupes by
+// scope+principal+role).
+
+var mlClusterPids = enableMl ? mlCompute!.outputs.computeClusterPrincipalIds : []
+
+module raMlComputeBlob 'modules/role-assignment/main.bicep' = [for (cc, i) in mlClusters: if (enableMl) {
+  name: 'ra-ml-compute-blob-${i}'
+  params: {
+    roleAssignment: {
+      principalId: mlClusterPids[i]
+      roleDefinitionIdOrName: 'Storage Blob Data Contributor'
+      scopeResourceId: sa.outputs.id
+      principalType: 'ServicePrincipal'
+      description: 'ML compute cluster ${cc.name} MSI -> trials datalake (keyless read/write)'
+    }
+  }
+  dependsOn: [ mlCompute ]
+}]
+
 // ----- Diagnostics on the major PaaS resources -----
 
 resource kvExisting 'Microsoft.KeyVault/vaults@2023-07-01' existing = {

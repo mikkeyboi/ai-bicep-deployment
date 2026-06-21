@@ -64,9 +64,23 @@ No Complexity Tracking entries — no deviation introduced.
 - On deploy, the `ml-ws` step succeeds (template now matches the attached ACR;
   no detach attempted).
 
+## Compute identity for keyless-datastore reads
+
+Same deploy, related fix. An AmlCompute job reading a keyless datastore (the
+mechinterp `trials_datalake`) authenticates as the **cluster's own MSI**, not the
+workspace MSI; without one the run fails `Identity of the specified managed
+compute ... is not found`. So:
+
+- `compute.bicep`: clusters get `identity: { type: 'SystemAssigned' }` and output
+  `computeClusterPrincipalIds`.
+- `workload.bicep`: one `Storage Blob Data Contributor` grant per cluster MSI on
+  the shared storage account, created after `ml-compute` (`dependsOn`). Different
+  principal+name than `raMlBlob`, so no `RoleAssignmentExists` collision.
+
+The operator-user storage grant (needed to upload job code) stays a manual step —
+it is a per-developer grant, not infra.
+
 ## Out of scope
 
-- The compute instance (deferred, feature 009) and the GPU cluster (010) are
-  unchanged.
-- The keyless-datastore compute-identity follow-up noted in feature 010's spec is
-  still open; it is a separate change.
+- The compute instance (deferred, feature 009) and the GPU cluster shape (010)
+  are unchanged.
