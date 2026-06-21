@@ -235,6 +235,7 @@ module mlWs 'modules/machine-learning/workspace.bicep' = if (enableMl) {
     storageAccountId: sa.outputs.id
     keyVaultId: kv.outputs.id
     appInsightsId: appi.outputs.id
+    containerRegistryName: config.?machineLearning.?containerRegistryName ?? ''
   }
 }
 

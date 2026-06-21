@@ -115,6 +115,8 @@ type machineLearningConfig = {
   enabled: bool
   @description('Optional friendly (display) name for the workspace. No PII (public repo).')
   friendlyName: string?
+  @description('Optional NAME of an existing Container Registry to keep attached to the workspace. AzureML auto-attaches an ACR on the first environment-image build and it cannot be detached afterward, so a redeploy fails unless the template pins it. Set this to the auto-created ACR name once image builds have started (the id is composed in-module so the subscription GUID stays out of source). Omit before then.')
+  containerRegistryName: string?
   @description('Compute instances (single-user dev boxes) to attach. Empty list = none.')
   computeInstances: amlComputeInstanceConfig[]
   @description('Compute clusters (autoscaling managed compute) to attach. Empty list = none.')

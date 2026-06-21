@@ -116,6 +116,14 @@ param config = {
   machineLearning: {
     enabled: true
     friendlyName: 'AIO dev ML workspace'
+    // ACR pin (feature 011): AzureML auto-created + attached this Container
+    // Registry on the first environment-image build (mlplatform pipeline).
+    // An attached ACR cannot be detached, so a redeploy of a workspace declared
+    // without one fails with "Detaching Container Registry with workspace is not
+    // supported". Pinning the auto-created name here keeps the template aligned
+    // with live state. Name is a hex string (no subscription GUID); the id is
+    // composed in-module via resourceId() so the GUID stays out of source.
+    containerRegistryName: '51119126436640639d290bc8189dcbbf'
     // computeInstances DEFERRED (feature 009): a keyless ComputeInstance
     // mounts workspacefilestore via the workspace MSI DURING create, and
     // that mount fails with StorageMountError until the 'Storage File Data

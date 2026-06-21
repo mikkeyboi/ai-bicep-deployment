@@ -16,6 +16,9 @@ param storageAccountId string
 param keyVaultId string
 param appInsightsId string
 
+@description('Optional resource ID of an existing Container Registry to keep attached. AzureML auto-creates and attaches an ACR the first time a job builds an environment image; once attached it CANNOT be detached ("Detaching Container Registry with workspace is not supported"), so a redeploy of a workspace declared without one fails. Pass the auto-created ACR NAME via containerRegistryName (the id is composed here so the paramfile never carries the subscription GUID). Empty = let AzureML manage it (valid only before the first image build).')
+param containerRegistryName string = ''
+
 // kind defaults to a standard ("Default") training workspace — NOT a
 // Foundry hub (those live on Microsoft.CognitiveServices, per Constitution
 // IV). systemDatastoresAuthMode='identity' makes the system datastores
@@ -23,6 +26,13 @@ param appInsightsId string
 // API: 2024-10-01-preview — systemDatastoresAuthMode is preview-only (not
 // in the 2024-10-01 GA schema). Consistent with the repo's existing use of
 // preview CognitiveServices APIs.
+
+// Compose the ACR id from its name so the subscription GUID is never written
+// into a tracked paramfile (Constitution II): resourceId() resolves against
+// the deploying subscription + this resource group at deploy time.
+var containerRegistryId = empty(containerRegistryName)
+  ? null
+  : resourceId('Microsoft.ContainerRegistry/registries', containerRegistryName)
 
 resource ws 'Microsoft.MachineLearningServices/workspaces@2024-10-01-preview' = {
   name: name
@@ -35,6 +45,7 @@ resource ws 'Microsoft.MachineLearningServices/workspaces@2024-10-01-preview' = 
     storageAccount: storageAccountId
     keyVault: keyVaultId
     applicationInsights: appInsightsId
+    containerRegistry: containerRegistryId
     systemDatastoresAuthMode: 'identity'
     publicNetworkAccess: publicNetworkAccess
   }
