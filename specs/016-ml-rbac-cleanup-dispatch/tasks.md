@@ -7,6 +7,7 @@
 - [x] Run privacy, gitleaks, and diff checks.
 - [x] Address independent destructive-path safety review findings.
 - [x] Add standard-library migration tests to CI.
+- [x] Bind validated names to deleted IDs and preserve convergence after partial failure.
 - [ ] Open and review the public PR.
 - [ ] Dispatch one-time migration and deployment.
 - [ ] Verify final storage grants and default idempotence.

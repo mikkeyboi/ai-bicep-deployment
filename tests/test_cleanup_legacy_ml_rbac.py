@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import subprocess
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from scripts import cleanup_legacy_ml_rbac as cleanup
@@ -82,6 +83,15 @@ class CleanupSelectionTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "expected one gpu-a100"):
             cleanup._select_targets(computes)
 
+    def test_requires_distinct_compute_principals(self):
+        computes = [
+            _compute("cc-dev-gpu-a100", "shared-principal"),
+            _compute("cc-dev-gpu-h100", "shared-principal"),
+        ]
+
+        with self.assertRaisesRegex(RuntimeError, "must have distinct"):
+            cleanup._select_targets(computes)
+
     def test_rejects_final_assignment_on_rerun(self):
         targets = {
             "cc-dev-gpu-a100": "principal-a",
@@ -111,6 +121,38 @@ class CleanupSelectionTests(unittest.TestCase):
         ]
 
         with self.assertRaisesRegex(RuntimeError, "not the superseded legacy identity"):
+            cleanup._plan_deletions(
+                assignments,
+                targets=targets,
+                storage_id=_STORAGE_ID,
+                role_definition_id=_ROLE_ID,
+            )
+
+    def test_rejects_name_that_does_not_match_deleted_id(self):
+        targets = {
+            "cc-dev-gpu-a100": "principal-a",
+            "cc-dev-gpu-h100": "principal-h",
+        }
+        mismatched = _legacy_assignment("principal-a")
+        mismatched["id"] = mismatched["id"].rsplit("/", 1)[0] + "/different"
+        assignments = [mismatched, _legacy_assignment("principal-h")]
+
+        with self.assertRaisesRegex(RuntimeError, "name and resource ID differ"):
+            cleanup._plan_deletions(
+                assignments,
+                targets=targets,
+                storage_id=_STORAGE_ID,
+                role_definition_id=_ROLE_ID,
+            )
+
+    def test_rejects_duplicate_planned_assignment_ids(self):
+        targets = {
+            "cc-dev-gpu-a100": "shared-principal",
+            "cc-dev-gpu-h100": "shared-principal",
+        }
+        assignments = [_legacy_assignment("shared-principal")]
+
+        with self.assertRaisesRegex(RuntimeError, "duplicate role-assignment IDs"):
             cleanup._plan_deletions(
                 assignments,
                 targets=targets,
@@ -217,6 +259,32 @@ class CleanupExecutionTests(unittest.TestCase):
 
         self.assertEqual(delete.call_count, 2)
 
+    @patch.dict("os.environ", {"AZ_SUB": _SUBSCRIPTION}, clear=True)
+    @patch.object(cleanup, "_az_json")
+    @patch.object(cleanup, "_rest_values")
+    def test_attempts_both_deletes_before_reporting_failure(self, rest_values, az_json):
+        az_json.side_effect = self._az_json
+        rest_values.side_effect = [
+            [
+                _compute("cc-dev-gpu-a100", "principal-a"),
+                _compute("cc-dev-gpu-h100", "principal-h"),
+            ],
+            [
+                _legacy_assignment("principal-a"),
+                _legacy_assignment("principal-h"),
+            ],
+        ]
+        delete = Mock(side_effect=[None, RuntimeError("sanitized failure")])
+
+        with self.assertRaisesRegex(RuntimeError, "1 superseded.*failed"):
+            cleanup.run_cleanup(
+                environment="dev",
+                confirmation=cleanup._CONFIRMATION,
+                delete_assignment=delete,
+            )
+
+        self.assertEqual(delete.call_count, 2)
+
     def test_rejects_non_dev_before_discovery(self):
         with self.assertRaisesRegex(RuntimeError, "restricted to dev"):
             cleanup.run_cleanup(
@@ -230,6 +298,13 @@ class CleanupExecutionTests(unittest.TestCase):
 
 
 class CleanupTransportTests(unittest.TestCase):
+    def test_workflow_runs_convergence_after_cleanup_failure(self):
+        workflow = Path(".github/workflows/deploy.yml").read_text(encoding="utf-8")
+
+        self.assertIn("continue-on-error: true", workflow)
+        self.assertIn("steps.cleanup_request.outcome != 'failure'", workflow)
+        self.assertIn("steps.cleanup.outcome == 'failure'", workflow)
+
     @patch.object(cleanup, "_az_json")
     def test_rest_collection_follows_pagination(self, az_json):
         second = f"{cleanup._MANAGEMENT_ORIGIN}/next"

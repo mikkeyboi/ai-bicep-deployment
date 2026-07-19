@@ -7,7 +7,8 @@
 3. Discover A100/H100 compute principals through ARM.
 4. Assert and delete exactly one matching storage grant per target.
 5. Guard the step behind a default-false workflow-dispatch boolean.
-6. Run the normal deployment immediately after cleanup.
+6. Run the normal deployment after cleanup, including partial-delete failure, and
+   surface the cleanup failure only after the convergence attempt.
 
 ## Constitution Check
 

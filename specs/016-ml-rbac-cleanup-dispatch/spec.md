@@ -28,6 +28,10 @@ those two superseded grants, and then runs the normal deployment.
 - FR-007: Both targets and both legacy deterministic IDs validate before deletion.
 - FR-008: A final scope-salted ID or any unknown ID aborts cleanup.
 - FR-009: Azure CLI failures never print command arguments or resource IDs.
+- FR-010: The assignment resource-ID suffix, reported name, and calculated legacy
+  GUID must match exactly; principals and assignment IDs must be distinct.
+- FR-011: After a valid migration begins, declarative convergence runs even if a
+  deletion fails, while the workflow still reports failure.
 
 ## Acceptance
 

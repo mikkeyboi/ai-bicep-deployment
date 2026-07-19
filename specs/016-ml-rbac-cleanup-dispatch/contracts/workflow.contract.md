@@ -20,6 +20,10 @@ The script requires the literal confirmation value
   legacy ID and rejecting final/unknown IDs;
 - follow ARM collection pagination;
 - validate every target before the first deletion;
+- bind the deleted resource ID itself to the calculated legacy GUID and require
+  distinct principals and assignment IDs;
 - sanitize Azure CLI failures without printing command arguments or IDs.
 
-The normal deployment step follows cleanup in the same authenticated job.
+The normal deployment step follows cleanup in the same authenticated job. Once a
+valid cleanup request begins mutation, deployment must run even if one deletion
+fails; a final guard preserves the cleanup failure after the convergence attempt.

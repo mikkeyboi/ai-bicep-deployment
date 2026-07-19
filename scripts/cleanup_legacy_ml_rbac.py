@@ -90,6 +90,8 @@ def _select_targets(computes: list[dict[str, Any]]) -> dict[str, str]:
         if not isinstance(principal_id, str) or not principal_id:
             raise RuntimeError(f"{suffix} compute has no system-assigned principal")
         targets[str(compute["name"])] = principal_id
+    if len({principal.lower() for principal in targets.values()}) != len(targets):
+        raise RuntimeError("target computes must have distinct system-assigned principals")
     return targets
 
 
@@ -131,15 +133,20 @@ def _plan_deletions(
 
         assignment = matched[0]
         assignment_id = str(assignment.get("id", ""))
-        assignment_name = str(assignment.get("name") or assignment_id.rsplit("/", 1)[-1]).lower()
+        assignment_id_name = assignment_id.rsplit("/", 1)[-1].lower()
+        assignment_name = str(assignment.get("name", "")).lower()
         legacy_name = _arm_guid(storage_id, principal_id, role_guid)
         final_name = _arm_guid("storageAccount", storage_id, principal_id, role_guid)
-        if assignment_name == final_name:
+        if assignment_name != assignment_id_name:
+            raise RuntimeError(f"{compute_name}: role-assignment name and resource ID differ")
+        if assignment_id_name == final_name:
             raise RuntimeError(f"{compute_name}: final storage grant already exists")
-        if assignment_name != legacy_name:
+        if assignment_id_name != legacy_name:
             raise RuntimeError(f"{compute_name}: storage grant is not the superseded legacy identity")
         planned.append((compute_name, assignment_id))
 
+    if len({assignment_id.lower() for _, assignment_id in planned}) != len(planned):
+        raise RuntimeError("target computes resolved to duplicate role-assignment IDs")
     return planned
 
 
@@ -244,9 +251,17 @@ def run_cleanup(
         storage_id=storage_id,
         role_definition_id=role_definition_id,
     )
+    failures: list[str] = []
     for compute_name, assignment_id in planned:
-        delete_assignment(assignment_id, compute_name=compute_name)
-        print(f"{compute_name}: deleted one superseded storage grant")
+        try:
+            delete_assignment(assignment_id, compute_name=compute_name)
+        except RuntimeError:
+            failures.append(compute_name)
+            print(f"{compute_name}: deletion failed", file=sys.stderr)
+        else:
+            print(f"{compute_name}: deleted one superseded storage grant")
+    if failures:
+        raise RuntimeError(f"{len(failures)} superseded storage-grant deletion(s) failed")
 
 
 def main() -> int:
