@@ -69,7 +69,7 @@ var mlInstances = enableMl ? map(config.machineLearning!.computeInstances, ci =>
   idleTimeBeforeShutdown: ci.?idleTimeBeforeShutdown
 }) : []
 var mlClusters = enableMl ? map(config.machineLearning!.computeClusters, cc => {
-  name: nameMlCc(config.workloadName, config.environment, config.location, cc.processor)
+  name: nameMlCc(config.workloadName, config.environment, config.location, cc.?nameSuffix ?? cc.processor)
   vmSize: cc.vmSize
   vmPriority: cc.?vmPriority
   scale: cc.scale

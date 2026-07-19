@@ -165,6 +165,41 @@ param config = {
           nodeIdleTimeBeforeScaleDown: 'PT300S'
         }
       }
+      // Accelerator strata (feature 013): distinct names preserve hardware
+      // identity in AzureML run metadata. All are pre-emptible and scale to zero.
+      {
+        processor: 'gpu'
+        nameSuffix: 'gpu-t4'
+        vmSize: 'Standard_NC8as_T4_v3'
+        vmPriority: 'LowPriority'
+        scale: {
+          minNodes: 0
+          maxNodes: 2
+          nodeIdleTimeBeforeScaleDown: 'PT300S'
+        }
+      }
+      {
+        processor: 'gpu'
+        nameSuffix: 'gpu-a100'
+        vmSize: 'Standard_NC24ads_A100_v4'
+        vmPriority: 'LowPriority'
+        scale: {
+          minNodes: 0
+          maxNodes: 2
+          nodeIdleTimeBeforeScaleDown: 'PT300S'
+        }
+      }
+      {
+        processor: 'gpu'
+        nameSuffix: 'gpu-h100'
+        vmSize: 'Standard_NC40ads_H100_v5'
+        vmPriority: 'LowPriority'
+        scale: {
+          minNodes: 0
+          maxNodes: 2
+          nodeIdleTimeBeforeScaleDown: 'PT300S'
+        }
+      }
     ]
   }
 }
