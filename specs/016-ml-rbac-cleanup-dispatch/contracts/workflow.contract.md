@@ -16,8 +16,8 @@ The script requires the literal confirmation value
 - emit only target names and deletion counts;
 - require exactly one workspace, storage account, target compute per suffix, and
   eligible assignment per target;
-- calculate the documented ARM `guid()` legacy and final IDs, accepting only the
-  legacy ID and rejecting final/unknown IDs;
+- calculate the documented ARM `guid()` legacy and final IDs, delete only legacy
+  IDs, retain final IDs, and reject unknown IDs;
 - follow ARM collection pagination;
 - validate every target before the first deletion;
 - bind the deleted resource ID itself to the calculated legacy GUID and require

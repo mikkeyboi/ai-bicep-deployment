@@ -25,8 +25,10 @@ those two superseded grants, and then runs the normal deployment.
 - FR-004: Only A100/H100 storage-scoped Blob Contributor grants are eligible.
 - FR-005: Any unexpected count aborts before deletion.
 - FR-006: Cleanup is restricted to dev in both workflow and script.
-- FR-007: Both targets and both legacy deterministic IDs validate before deletion.
-- FR-008: A final scope-salted ID or any unknown ID aborts cleanup.
+- FR-007: Both targets and both deterministic assignment identities validate as
+  legacy or final before any deletion.
+- FR-008: A final scope-salted ID is retained and skipped; any unknown ID aborts
+  cleanup, allowing mixed final/legacy state to resume safely.
 - FR-009: Azure CLI failures never print command arguments or resource IDs.
 - FR-010: The assignment resource-ID suffix, reported name, and calculated legacy
   GUID must match exactly; principals and assignment IDs must be distinct.

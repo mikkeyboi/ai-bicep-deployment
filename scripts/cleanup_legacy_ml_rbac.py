@@ -111,6 +111,7 @@ def _plan_deletions(
     )
     role_guid = role_definition_id.rsplit("/", 1)[-1].lower()
     planned: list[tuple[str, str]] = []
+    matched_assignment_ids: list[str] = []
 
     for compute_name, principal_id in sorted(targets.items()):
         matched = []
@@ -139,13 +140,16 @@ def _plan_deletions(
         final_name = _arm_guid("storageAccount", storage_id, principal_id, role_guid)
         if assignment_name != assignment_id_name:
             raise RuntimeError(f"{compute_name}: role-assignment name and resource ID differ")
+        matched_assignment_ids.append(assignment_id)
         if assignment_id_name == final_name:
-            raise RuntimeError(f"{compute_name}: final storage grant already exists")
+            continue
         if assignment_id_name != legacy_name:
             raise RuntimeError(f"{compute_name}: storage grant is not the superseded legacy identity")
         planned.append((compute_name, assignment_id))
 
-    if len({assignment_id.lower() for _, assignment_id in planned}) != len(planned):
+    if len({assignment_id.lower() for assignment_id in matched_assignment_ids}) != len(
+        matched_assignment_ids
+    ):
         raise RuntimeError("target computes resolved to duplicate role-assignment IDs")
     return planned
 

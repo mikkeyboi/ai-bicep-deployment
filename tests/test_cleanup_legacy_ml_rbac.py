@@ -92,7 +92,7 @@ class CleanupSelectionTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "must have distinct"):
             cleanup._select_targets(computes)
 
-    def test_rejects_final_assignment_on_rerun(self):
+    def test_rerun_skips_final_assignment_and_plans_remaining_legacy(self):
         targets = {
             "cc-dev-gpu-a100": "principal-a",
             "cc-dev-gpu-h100": "principal-h",
@@ -102,13 +102,33 @@ class CleanupSelectionTests(unittest.TestCase):
             _legacy_assignment("principal-h"),
         ]
 
-        with self.assertRaisesRegex(RuntimeError, "final storage grant already exists"):
-            cleanup._plan_deletions(
-                assignments,
-                targets=targets,
-                storage_id=_STORAGE_ID,
-                role_definition_id=_ROLE_ID,
-            )
+        planned = cleanup._plan_deletions(
+            assignments,
+            targets=targets,
+            storage_id=_STORAGE_ID,
+            role_definition_id=_ROLE_ID,
+        )
+
+        self.assertEqual([name for name, _ in planned], ["cc-dev-gpu-h100"])
+
+    def test_rerun_with_all_final_assignments_is_a_no_op(self):
+        targets = {
+            "cc-dev-gpu-a100": "principal-a",
+            "cc-dev-gpu-h100": "principal-h",
+        }
+        assignments = [
+            _final_assignment("principal-a"),
+            _final_assignment("principal-h"),
+        ]
+
+        planned = cleanup._plan_deletions(
+            assignments,
+            targets=targets,
+            storage_id=_STORAGE_ID,
+            role_definition_id=_ROLE_ID,
+        )
+
+        self.assertEqual(planned, [])
 
     def test_rejects_unknown_assignment_identity(self):
         targets = {
