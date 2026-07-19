@@ -111,15 +111,19 @@ def _plan_deletions(
     planned: list[tuple[str, str]] = []
 
     for compute_name, principal_id in sorted(targets.items()):
-        matched = [
-            assignment
-            for assignment in assignments
-            if str(assignment.get("id", "")).lower().startswith(storage_prefix)
-            and assignment.get("properties", {}).get("principalId", "").lower()
-            == principal_id.lower()
-            and assignment.get("properties", {}).get("roleDefinitionId", "").lower()
-            == role_definition_id.lower()
-        ]
+        matched = []
+        for assignment in assignments:
+            properties = assignment.get("properties")
+            if not isinstance(properties, dict):
+                continue
+            if (
+                str(assignment.get("id", "")).lower().startswith(storage_prefix)
+                and str(properties.get("principalId", "")).lower()
+                == principal_id.lower()
+                and str(properties.get("roleDefinitionId", "")).lower()
+                == role_definition_id.lower()
+            ):
+                matched.append(assignment)
         if len(matched) != 1:
             raise RuntimeError(
                 f"{compute_name}: expected one storage grant, found {len(matched)}"

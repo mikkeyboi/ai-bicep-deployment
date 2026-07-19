@@ -118,6 +118,30 @@ class CleanupSelectionTests(unittest.TestCase):
                 role_definition_id=_ROLE_ID,
             )
 
+    def test_null_assignment_properties_fail_through_cardinality_guard(self):
+        targets = {
+            "cc-dev-gpu-a100": "principal-a",
+            "cc-dev-gpu-h100": "principal-h",
+        }
+        assignments = [
+            {
+                "id": (
+                    f"{_STORAGE_ID}/providers/Microsoft.Authorization/"
+                    "roleAssignments/unexpected"
+                ),
+                "properties": None,
+            },
+            _legacy_assignment("principal-h"),
+        ]
+
+        with self.assertRaisesRegex(RuntimeError, "expected one storage grant, found 0"):
+            cleanup._plan_deletions(
+                assignments,
+                targets=targets,
+                storage_id=_STORAGE_ID,
+                role_definition_id=_ROLE_ID,
+            )
+
 
 class CleanupExecutionTests(unittest.TestCase):
     def _az_json(self, operation: str, *args: str):
