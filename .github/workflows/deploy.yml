@@ -14,6 +14,11 @@ on:
         required: true
         type: boolean
         default: false
+      migration_confirmation:
+        description: 'Type the documented cleanup confirmation when migration is enabled'
+        required: true
+        type: string
+        default: ''
   push:
     branches: [main]
     paths:
@@ -128,16 +133,34 @@ jobs:
             fi
             rm -f whatif.raw
 
-      - name: Remove superseded A100/H100 storage grants
+      - name: Validate legacy ML RBAC cleanup request
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.migrate_legacy_ml_rbac }}
+        env:
+          TARGET_ENV: ${{ inputs.environment }}
+          MIGRATION_CONFIRMATION: ${{ inputs.migration_confirmation }}
+        run: |
+          if [ "$TARGET_ENV" != "dev" ]; then
+            echo "::error::Legacy ML RBAC cleanup is restricted to dev."
+            exit 1
+          fi
+          if [ "$MIGRATION_CONFIRMATION" != "delete-superseded-a100-h100-storage-grants" ]; then
+            echo "::error::Legacy ML RBAC cleanup confirmation did not match."
+            exit 1
+          fi
+
+      - name: Remove superseded A100/H100 storage grants
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.migrate_legacy_ml_rbac && inputs.environment == 'dev' }}
         uses: azure/cli@v2
         env:
           AZ_SUB: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ENV_NAME: ${{ inputs.environment }}
+          MIGRATION_CONFIRMATION: ${{ inputs.migration_confirmation }}
         with:
           azcliversion: latest
           inlineScript: |
             python3 scripts/cleanup_legacy_ml_rbac.py \
-              --confirm delete-superseded-a100-h100-storage-grants
+              --environment "$ENV_NAME" \
+              --confirm "$MIGRATION_CONFIRMATION"
 
       - name: az deployment sub create (status only)
         uses: azure/cli@v2

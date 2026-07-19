@@ -24,10 +24,15 @@ those two superseded grants, and then runs the normal deployment.
 - FR-003: Resource discovery uses standard tags and fails closed on ambiguity.
 - FR-004: Only A100/H100 storage-scoped Blob Contributor grants are eligible.
 - FR-005: Any unexpected count aborts before deletion.
+- FR-006: Cleanup is restricted to dev in both workflow and script.
+- FR-007: Both targets and both legacy deterministic IDs validate before deletion.
+- FR-008: A final scope-salted ID or any unknown ID aborts cleanup.
+- FR-009: Azure CLI failures never print command arguments or resource IDs.
 
 ## Acceptance
 
-- Script syntax/help and workflow YAML parse pass.
+- Standard-library unit tests cover cardinality, atomic preflight, final-ID reruns,
+  pagination, environment/confirmation guards, and sanitized failures.
 - CI validation passes.
 - One explicit dev dispatch deletes two superseded grants and deployment succeeds.
 - Subsequent default deployments are non-destructive and idempotent.
