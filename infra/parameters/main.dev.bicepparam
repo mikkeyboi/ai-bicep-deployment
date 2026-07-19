@@ -147,37 +147,9 @@ param config = {
           nodeIdleTimeBeforeScaleDown: 'PT300S'
         }
       }
-      // GPU cluster (feature 010): low-priority Standard_NC6s_v3 (1x V100 16GB,
-      // sm_70) for the mechinterp research runs. minNodes:0 => free when idle;
-      // LowPriority => cheapest pre-emptible GPU (runs are restartable). The CPU
-      // entry above is UNCHANGED, so cc-aio-dev-eus2-cpu is not replaced; this
-      // adds cc-aio-dev-eus2-gpu. A cluster (min 0 nodes) does not mount
-      // workspacefilestore at create, so it is not subject to the 009
-      // StorageMountError. REQUIRES low-priority NCSv3 vCPU quota in eastus2
-      // (6 vCPU/node x 2 = 12) — see specs/010 quota check before deploy.
-      {
-        processor: 'gpu'
-        vmSize: 'Standard_NC6s_v3'
-        vmPriority: 'LowPriority'
-        scale: {
-          minNodes: 0
-          maxNodes: 2
-          nodeIdleTimeBeforeScaleDown: 'PT300S'
-        }
-      }
-      // Accelerator strata (feature 013): distinct names preserve hardware
-      // identity in AzureML run metadata. All are pre-emptible and scale to zero.
-      {
-        processor: 'gpu'
-        nameSuffix: 'gpu-t4'
-        vmSize: 'Standard_NC8as_T4_v3'
-        vmPriority: 'LowPriority'
-        scale: {
-          minNodes: 0
-          maxNodes: 2
-          nodeIdleTimeBeforeScaleDown: 'PT300S'
-        }
-      }
+      // Accelerator strata (feature 013): retain only the requested A100 and H100
+      // pools. Both are pre-emptible, scale to zero, and fit simultaneously under
+      // AzureML's 200-vCPU regional low-priority cluster quota at maxNodes:2.
       {
         processor: 'gpu'
         nameSuffix: 'gpu-a100'

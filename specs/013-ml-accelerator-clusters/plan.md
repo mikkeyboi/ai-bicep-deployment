@@ -4,11 +4,13 @@
 
 1. Add optional `nameSuffix` to the shared AmlCompute cluster configuration.
 2. Resolve cluster names through the existing central naming function using `nameSuffix` when present and `processor` otherwise.
-3. Preserve the generic V100 entry and backfill the live T4 cluster.
-4. Add A100 and H100 entries in the dev parameter file only.
+3. Remove V100 and T4 from desired dev state.
+4. Add only A100 and H100 entries in the dev parameter file.
 5. Reuse the generic compute module, feature-012 system identities, and per-cluster storage RBAC.
 6. Validate compiled names, priorities, scale settings, and unchanged test/prod output.
-7. Run subscription validate/what-if, then provision scale-to-zero definitions before attempting allocation smokes.
+7. Run subscription validate/what-if, provision scale-to-zero definitions, and
+   verify both resources before explicitly deleting legacy V100/T4 clusters.
+8. Run one-node allocation smokes after definition provisioning.
 
 ## Constitution Check
 
@@ -29,4 +31,6 @@ No deviations.
 
 ## Rollback
 
-Remove the three named accelerator entries and optional suffix wiring. Incremental deployment does not delete previously created clusters automatically; explicit cleanup, if wanted, is a separate reviewed action.
+Remove the two named accelerator entries and optional suffix wiring. Incremental
+deployment does not delete previously created clusters automatically. Recreating
+the legacy pools would require restoring their parameter entries and redeploying.

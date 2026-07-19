@@ -17,8 +17,6 @@ If `nameSuffix` is omitted, naming remains backward compatible and uses `process
 | Suffix | SKU | Priority | Min | Max |
 |---|---|---|---:|---:|
 | `cpu` | existing CPU SKU | Dedicated | 0 | 4 |
-| `gpu` | existing V100 SKU | LowPriority | 0 | 2 |
-| `gpu-t4` | T4 SKU | LowPriority | 0 | 2 |
 | `gpu-a100` | A100 SKU | LowPriority | 0 | 2 |
 | `gpu-h100` | H100 SKU | LowPriority | 0 | 2 |
 

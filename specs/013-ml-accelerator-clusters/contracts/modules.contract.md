@@ -30,6 +30,7 @@ No accelerator-specific logic is permitted. It continues to create generic Linux
 
 ## Compatibility
 
-- Existing CPU and V100 names are byte-for-byte unchanged.
+- Existing CPU naming remains byte-for-byte unchanged.
+- Dev desired GPU state contains only distinct A100 and H100 clusters.
 - Test/prod parameter files that omit `machineLearning` remain valid.
 - New accelerator labels and SKU literals exist only in the dev parameter file.

@@ -11,12 +11,19 @@ The Azure ML size catalog in eastus2 reports:
 
 Prices are discovery-time estimates, not a cost guarantee. Actual billing and capacity can change.
 
-The generic VM SKU API reports `NotAvailableForSubscription` restrictions for both SKUs. Azure ML's catalog still exposes low-priority capability, which is a distinct pool. The regional low-priority quota is 20 vCPUs, while A100 requires 24 and H100 requires 40 per node. A job allocation is therefore expected to require a quota increase even if the scale-to-zero cluster resource can be created.
+The generic VM SKU API reports `NotAvailableForSubscription` restrictions for
+both SKUs and the generic Compute usage endpoint reports a 20-vCPU regional
+low-priority pool. Neither is the governing AzureML AmlCompute cluster quota.
+`MLClient.compute.list_usage(location="eastus2")` reports `Total Cluster Low
+Priority Regional vCPUs` with current usage 0 and limit 200. At max two nodes
+each, A100 consumes 48 and H100 consumes 80, so both definitions fit under the
+128-vCPU combined ceiling. Allocation remains subject to transient capacity.
 
 ## Experimental role
 
-- T4 remains the first controlled stratum because two one-GPU nodes already exist and bound the initial claims.
-- A100/H100 are hardware replication strata, not replacements for the preregistered T4 comparison.
+- The completed T4 cloud smoke is retained as execution-boundary evidence, not
+  as an active comparison stratum.
+- A100 and H100 are the only desired benchmark accelerator pools.
 - One GPU per VM permits inter-node communication measurements but does not establish intra-node NVLink behavior.
 - Low-priority pre-emption is part of the checkpoint/recovery experiment, but involuntary eviction timing is not deterministic.
 
@@ -25,7 +32,9 @@ The generic VM SKU API reports `NotAvailableForSubscription` restrictions for bo
 - **One mutable `gpu` cluster:** changing its SKU destroys hardware identity in run metadata and risks replacement.
 - **Dedicated priority:** unnecessary cost for restartable experiments and currently unavailable family quota.
 - **Imperative cluster creation only:** leaves the reproducible IaC story incomplete.
-- **Treating catalog visibility as allocation proof:** ignores regional quota and transient low-priority capacity.
+- **Using generic Compute quota for AmlCompute:** reports the wrong pool; use
+  AzureML `compute.list_usage` for `Total Cluster Low Priority Regional vCPUs`.
+- **Treating quota as allocation proof:** ignores transient low-priority capacity.
 
 ## Cost posture
 
