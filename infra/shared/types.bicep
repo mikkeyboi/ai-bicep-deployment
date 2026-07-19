@@ -48,6 +48,8 @@ type roleAssignmentSpec = {
   // Built-in role name (resolved to ID in module) or a full GUID.
   roleDefinitionIdOrName: string
   scopeResourceId: string
+  @description('Deployment scope for the assignment. Defaults to resourceGroup; storageAccount narrows it to the named storage resource.')
+  scopeKind: ('resourceGroup' | 'storageAccount')?
   principalType: principalType
   description: string?
 }

@@ -24,4 +24,16 @@
 
 ## `workload.bicep`
 
-For each configured cluster, create one Storage Blob Data Contributor assignment on shared storage using the corresponding principal ID. Role assignment creation occurs after compute creation and uses the existing reusable role-assignment module.
+For each configured cluster, create one Storage Blob Data Contributor assignment
+on shared storage using the corresponding principal ID. Role assignment creation
+occurs after compute creation and uses the existing reusable role-assignment
+module with `scopeKind: storageAccount`.
+
+## `modules/role-assignment/main.bicep`
+
+- `scopeKind` is optional and defaults to `resourceGroup`, preserving every
+  existing caller.
+- `scopeKind: storageAccount` creates the assignment as an extension resource on
+  the storage account named by `scopeResourceId`.
+- The deterministic assignment name continues to include scope resource ID,
+  principal ID, and role definition ID.
