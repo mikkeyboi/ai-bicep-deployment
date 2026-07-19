@@ -387,7 +387,7 @@ module mlCompute 'modules/machine-learning/compute.bicep' = if (enableMl) {
 var mlClusterPids = enableMl ? mlCompute!.outputs.computeClusterPrincipalIds : []
 
 module raMlComputeBlob 'modules/role-assignment/main.bicep' = [for (cc, i) in mlClusters: if (enableMl) {
-  name: 'ra-ml-compute-blob-${i}'
+  name: 'ra-${cc.name}-blob'
   params: {
     roleAssignment: {
       principalId: mlClusterPids[i]
