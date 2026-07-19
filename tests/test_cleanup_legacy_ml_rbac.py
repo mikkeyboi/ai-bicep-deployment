@@ -319,7 +319,10 @@ class CleanupExecutionTests(unittest.TestCase):
 
 class CleanupTransportTests(unittest.TestCase):
     def test_workflow_runs_convergence_after_cleanup_failure(self):
-        workflow = Path(".github/workflows/deploy.yml").read_text(encoding="utf-8")
+        repository_root = Path(__file__).resolve().parents[1]
+        workflow = (repository_root / ".github/workflows/deploy.yml").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn("continue-on-error: true", workflow)
         self.assertIn("steps.cleanup_request.outcome != 'failure'", workflow)
