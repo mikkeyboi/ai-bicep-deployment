@@ -9,6 +9,11 @@ on:
         type: choice
         options: [dev, test, prod]
         default: dev
+      migrate_legacy_ml_rbac:
+        description: 'One-time: replace superseded A100/H100 storage-role identities'
+        required: true
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths:
@@ -122,6 +127,17 @@ jobs:
               exit $rc
             fi
             rm -f whatif.raw
+
+      - name: Remove superseded A100/H100 storage grants
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.migrate_legacy_ml_rbac }}
+        uses: azure/cli@v2
+        env:
+          AZ_SUB: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        with:
+          azcliversion: latest
+          inlineScript: |
+            python3 scripts/cleanup_legacy_ml_rbac.py \
+              --confirm delete-superseded-a100-h100-storage-grants
 
       - name: az deployment sub create (status only)
         uses: azure/cli@v2
