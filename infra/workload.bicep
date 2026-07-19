@@ -69,7 +69,7 @@ var mlInstances = enableMl ? map(config.machineLearning!.computeInstances, ci =>
   idleTimeBeforeShutdown: ci.?idleTimeBeforeShutdown
 }) : []
 var mlClusters = enableMl ? map(config.machineLearning!.computeClusters, cc => {
-  name: nameMlCc(config.workloadName, config.environment, config.location, cc.processor)
+  name: nameMlCc(config.workloadName, config.environment, config.location, cc.?nameSuffix ?? cc.processor)
   vmSize: cc.vmSize
   vmPriority: cc.?vmPriority
   scale: cc.scale
@@ -393,6 +393,7 @@ module raMlComputeBlob 'modules/role-assignment/main.bicep' = [for (cc, i) in ml
       principalId: mlClusterPids[i]
       roleDefinitionIdOrName: 'Storage Blob Data Contributor'
       scopeResourceId: sa.outputs.id
+      scopeKind: 'storageAccount'
       principalType: 'ServicePrincipal'
       description: 'ML compute cluster ${cc.name} MSI -> trials datalake (keyless read/write)'
     }

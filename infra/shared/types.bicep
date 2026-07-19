@@ -48,6 +48,8 @@ type roleAssignmentSpec = {
   // Built-in role name (resolved to ID in module) or a full GUID.
   roleDefinitionIdOrName: string
   scopeResourceId: string
+  @description('Deployment scope for the assignment. Defaults to resourceGroup; storageAccount narrows it to the named storage resource.')
+  scopeKind: ('resourceGroup' | 'storageAccount')?
   principalType: principalType
   description: string?
 }
@@ -102,6 +104,8 @@ type amlComputeInstanceConfig = {
 type amlComputeClusterConfig = {
   @description('Processor class — drives the name (cc-…-<processor>) and the VM family. "cpu" now; "gpu" later with no rename.')
   processor: computeProcessor
+  @description('Optional CAF instance suffix for multiple clusters of one processor class, e.g. "gpu-t4". Defaults to processor for backward-compatible names.')
+  nameSuffix: string?
   @description('VM SKU, e.g. "Standard_DS3_v2" (CPU) or "Standard_NC6s_v3" (GPU).')
   vmSize: string
   @description('Optional VM priority. Defaults to "Dedicated" when omitted; "LowPriority" for cheap pre-emptible nodes.')
