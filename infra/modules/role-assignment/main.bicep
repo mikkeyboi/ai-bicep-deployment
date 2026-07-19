@@ -48,7 +48,7 @@ resource raResourceGroup 'Microsoft.Authorization/roleAssignments@2022-04-01' = 
 }
 
 resource raStorage 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (scopeKind == 'storageAccount') {
-  name: guid(roleAssignment.scopeResourceId, roleAssignment.principalId, roleDefId)
+  name: guid('storageAccount', roleAssignment.scopeResourceId, roleAssignment.principalId, roleDefId)
   scope: storageScope
   properties: {
     principalId: roleAssignment.principalId
