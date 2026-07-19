@@ -66,12 +66,13 @@ def _rest_values(url: str, *, operation: str) -> list[dict[str, Any]]:
 def _single_tagged_resource(
     resources: list[dict[str, Any]], *, kind: str, environment: str
 ) -> dict[str, Any]:
-    matched = [
-        resource
-        for resource in resources
-        if resource.get("tags", {}).get("environment") == environment
-        and resource.get("tags", {}).get("workload") == "aio"
-    ]
+    matched = []
+    for resource in resources:
+        tags = resource.get("tags")
+        if not isinstance(tags, dict):
+            continue
+        if tags.get("environment") == environment and tags.get("workload") == "aio":
+            matched.append(resource)
     if len(matched) != 1:
         raise RuntimeError(f"expected one tagged {environment} {kind}, found {len(matched)}")
     return matched[0]
@@ -84,7 +85,8 @@ def _select_targets(computes: list[dict[str, Any]]) -> dict[str, str]:
         if len(matched) != 1:
             raise RuntimeError(f"expected one {suffix} compute, found {len(matched)}")
         compute = matched[0]
-        principal_id = compute.get("identity", {}).get("principalId")
+        identity = compute.get("identity")
+        principal_id = identity.get("principalId") if isinstance(identity, dict) else None
         if not isinstance(principal_id, str) or not principal_id:
             raise RuntimeError(f"{suffix} compute has no system-assigned principal")
         targets[str(compute["name"])] = principal_id

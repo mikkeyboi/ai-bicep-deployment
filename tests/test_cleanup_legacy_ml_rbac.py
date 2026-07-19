@@ -52,6 +52,27 @@ def _final_assignment(principal: str) -> dict:
 
 
 class CleanupSelectionTests(unittest.TestCase):
+    def test_null_tags_are_ignored_by_cardinality_check(self):
+        resources = [
+            {"tags": None},
+            {"tags": {"environment": "dev", "workload": "aio"}},
+        ]
+
+        selected = cleanup._single_tagged_resource(
+            resources, kind="workspace", environment="dev"
+        )
+
+        self.assertEqual(selected["tags"]["workload"], "aio")
+
+    def test_null_compute_identity_fails_with_clear_error(self):
+        computes = [
+            {"name": "cc-dev-gpu-a100", "identity": None},
+            _compute("cc-dev-gpu-h100", "principal-h"),
+        ]
+
+        with self.assertRaisesRegex(RuntimeError, "has no system-assigned principal"):
+            cleanup._select_targets(computes)
+
     def test_requires_exactly_one_compute_per_suffix(self):
         computes = [
             _compute("cc-dev-gpu-a100", "principal-a"),
