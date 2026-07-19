@@ -393,6 +393,7 @@ module raMlComputeBlob 'modules/role-assignment/main.bicep' = [for (cc, i) in ml
       principalId: mlClusterPids[i]
       roleDefinitionIdOrName: 'Storage Blob Data Contributor'
       scopeResourceId: sa.outputs.id
+      scopeKind: 'storageAccount'
       principalType: 'ServicePrincipal'
       description: 'ML compute cluster ${cc.name} MSI -> trials datalake (keyless read/write)'
     }

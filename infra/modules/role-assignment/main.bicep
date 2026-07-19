@@ -1,5 +1,5 @@
 // modules/role-assignment/main.bicep
-// Idempotent role assignment at any scope (resource-group or resource).
+// Idempotent role assignment at resource-group or storage-account scope.
 
 metadata description = 'Idempotent RBAC assignment using guid(scope, principalId, roleDefinitionId).'
 
@@ -30,8 +30,13 @@ var roleMap = {
 var roleDefId = contains(roleMap, roleAssignment.roleDefinitionIdOrName)
   ? roleMap[roleAssignment.roleDefinitionIdOrName]
   : roleAssignment.roleDefinitionIdOrName
+var scopeKind = roleAssignment.?scopeKind ?? 'resourceGroup'
 
-resource ra 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource storageScope 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
+  name: last(split(roleAssignment.scopeResourceId, '/'))
+}
+
+resource raResourceGroup 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (scopeKind == 'resourceGroup') {
   name: guid(roleAssignment.scopeResourceId, roleAssignment.principalId, roleDefId)
   scope: resourceGroup()
   properties: {
@@ -42,4 +47,15 @@ resource ra 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-output id string = ra.id
+resource raStorage 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (scopeKind == 'storageAccount') {
+  name: guid(roleAssignment.scopeResourceId, roleAssignment.principalId, roleDefId)
+  scope: storageScope
+  properties: {
+    principalId: roleAssignment.principalId
+    principalType: roleAssignment.principalType
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefId)
+    description: roleAssignment.?description ?? null
+  }
+}
+
+output id string = scopeKind == 'storageAccount' ? raStorage!.id : raResourceGroup!.id
