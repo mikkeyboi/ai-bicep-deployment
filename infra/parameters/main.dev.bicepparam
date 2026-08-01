@@ -174,4 +174,37 @@ param config = {
       }
     ]
   }
+  // Agent-workflow telemetry (feature 017). Dev tier: single node, no SLA.
+  // Retention is short because this is a benchmark artifact, not a record.
+  dataExplorer: {
+    enabled: true
+    // Adopt the cluster that already holds the telemetry rather than creating
+    // a second CAF-named one. Drop this line only if the data is migrated.
+    nameOverride: 'adxaiodevhvac'
+    skuName: 'Dev(No SLA)_Standard_E2a_v4'
+    skuTier: 'Basic'
+    capacity: 1
+    databaseName: 'hvac'
+    softDeletePeriod: 'P31D'
+    hotCachePeriod: 'P7D'
+  }
+  // Timer trigger for the agent workflow, on Flex Consumption. The previous
+  // app was hand-created on Linux Consumption (Y1), which reaches EOL on
+  // 2028-09-30 and cannot be upgraded in place -- hence a new plan and app
+  // rather than a SKU parameter change.
+  functionApp: {
+    enabled: true
+    runtimeVersion: '3.12'
+    instanceMemoryMB: 2048
+    // A low ceiling on purpose: every invocation calls a metered model
+    // endpoint, so uncapped scale-out is a spend incident, not a feature.
+    maximumInstanceCount: 40
+    appSettings: {
+      // Non-secret tuning only. Endpoints, the storage account name, and the
+      // ADX coordinates are injected by workload.bicep from module outputs.
+      TRIAGE_SCHEDULE: '0 */2 * * * *'
+      TRIAGE_BATCH_SIZE: '3'
+      TRIAGE_STATE_CONTAINER: 'triage-state'
+    }
+  }
 }

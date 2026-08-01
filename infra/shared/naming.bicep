@@ -138,3 +138,18 @@ func mlComputeInstance(workload string, env string, location string, processor s
 @description('AML compute cluster (autoscale, scales to zero). Processor class in the instance slot (GPU-ready), same naming rules as the compute instance. Name: cc-<workload>-<env>-<region>-<processor>.')
 func mlComputeCluster(workload string, env string, location string, processor string) string =>
   nameOf('cc', workload, env, location, processor)
+
+@export()
+@description('Function App (Flex Consumption). Name: func-<workload>-<env>-<region>[-<instance>].')
+func functionApp(workload string, env string, location string, instance string) string =>
+  nameOf('func', workload, env, location, instance)
+
+@export()
+@description('Function App hosting plan. Flex Consumption still needs a serverfarm resource, unlike the legacy Y1 dynamic plan which the platform created implicitly. Name: asp-<workload>-<env>-<region>[-<instance>].')
+func functionPlan(workload string, env string, location string, instance string) string =>
+  nameOf('asp', workload, env, location, instance)
+
+@export()
+@description('Azure Data Explorer cluster: 4-22 chars, LOWERCASE alphanumeric only, must start with a letter. Hyphens are rejected by the resource provider, so the CAF name is flattened the same way storage accounts are.')
+func adxCluster(workload string, env string, location string, instance string, uniqueSeed string) string =>
+  toLower(take(replace(nameOfUnique('dec', workload, env, location, instance, uniqueSeed), '-', ''), 22))

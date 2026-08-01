@@ -154,6 +154,35 @@ type matrixConfig = {
 }
 
 @export()
+@description('Azure Data Explorer cluster + database for agent-run telemetry (feature 017).')
+type dataExplorerConfig = {
+  enabled: bool
+  @description('Optional. Adopt an EXISTING cluster by name instead of generating a CAF name. Set this when a cluster was created before it was templated; otherwise the deployment creates a second, differently-named cluster and orphans the data in the first.')
+  nameOverride: string?
+  @description('Cluster SKU. The dev tier ("Dev(No SLA)_...") is single-node and carries no availability guarantee.')
+  skuName: string?
+  @description('Constrained to the same union the module accepts, so a typo fails at compile time in the parameter file rather than at deploy time in Azure.')
+  skuTier: ('Basic' | 'Standard')?
+  capacity: int?
+  databaseName: string?
+  softDeletePeriod: string?
+  hotCachePeriod: string?
+}
+
+@export()
+@description('Function App on Flex Consumption (feature 017). Linux Consumption reaches EOL 2028-09-30 and cannot be upgraded in place, so this models Flex only.')
+type functionAppConfig = {
+  enabled: bool
+  @description('Language runtime version. Defaults to a version supported past the Linux Consumption EOL date.')
+  runtimeVersion: string?
+  @description('Per-instance memory in MB. Constrained to the values Flex accepts so a bad number fails at compile time.')
+  instanceMemoryMB: (2048 | 4096)?
+  maximumInstanceCount: int?
+  @description('Non-secret app settings only. Secrets and connection strings are forbidden -- the app uses its managed identity.')
+  appSettings: object?
+}
+
+@export()
 @description('Top-level shape consumed by infra/main.bicep.')
 type environmentConfig = {
   environment: envName
@@ -173,4 +202,8 @@ type environmentConfig = {
   matrix: matrixConfig?
   @description('Optional. Azure Machine Learning workspace + attached compute (feature 007). When omitted or enabled=false, no ML resources are deployed; test/prod that omit it compile and deploy unchanged.')
   machineLearning: machineLearningConfig?
+  @description('Optional. Azure Data Explorer cluster + database for agent-run telemetry (feature 017). When omitted or enabled=false, no cluster is deployed.')
+  dataExplorer: dataExplorerConfig?
+  @description('Optional. Function App on Flex Consumption for the timer-triggered agent workflow (feature 017). When omitted or enabled=false, no app or plan is deployed.')
+  functionApp: functionAppConfig?
 }
