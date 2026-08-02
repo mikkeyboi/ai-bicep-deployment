@@ -202,8 +202,15 @@ param config = {
     appSettings: {
       // Non-secret tuning only. Endpoints, the storage account name, and the
       // ADX coordinates are injected by workload.bicep from module outputs.
-      TRIAGE_SCHEDULE: '0 */2 * * * *'
-      TRIAGE_BATCH_SIZE: '3'
+      //
+      // Cadence is decoupled from data resolution on purpose. Alarms carry
+      // their own `raised_at` timestamps at full precision, so a slower tick
+      // does not coarsen the data -- it only changes how often the agents are
+      // invoked. A 2-minute tick spent an agent turn every 2 minutes to
+      // process 3 alarms; 30 minutes x 15 alarms covers more of the stream
+      // with 15x fewer invocations and no loss of timestamp fidelity.
+      TRIAGE_SCHEDULE: '0 */30 * * * *'
+      TRIAGE_BATCH_SIZE: '15'
       TRIAGE_STATE_CONTAINER: 'triage-state'
     }
   }
