@@ -9,6 +9,16 @@ on:
         type: choice
         options: [dev, test, prod]
         default: dev
+      migrate_legacy_ml_rbac:
+        description: 'One-time: replace superseded A100/H100 storage-role identities'
+        required: true
+        type: boolean
+        default: false
+      migration_confirmation:
+        description: 'Type the documented cleanup confirmation when migration is enabled'
+        required: true
+        type: string
+        default: ''
   push:
     branches: [main]
     paths:
@@ -51,6 +61,7 @@ jobs:
           echo "paramfile=infra/parameters/main.$ENV.bicepparam" >> "$GITHUB_OUTPUT"
 
       - name: az deployment sub validate (output suppressed)
+        id: validate
         uses: azure/cli@v2
         env:
           AZ_SUB:    ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -86,6 +97,7 @@ jobs:
             echo "validate: OK"
 
       - name: az deployment sub what-if (summary only)
+        id: whatif
         uses: azure/cli@v2
         env:
           AZ_SUB:    ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -123,7 +135,41 @@ jobs:
             fi
             rm -f whatif.raw
 
+      - name: Validate legacy ML RBAC cleanup request
+        id: cleanup_request
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.migrate_legacy_ml_rbac }}
+        env:
+          TARGET_ENV: ${{ inputs.environment }}
+          MIGRATION_CONFIRMATION: ${{ inputs.migration_confirmation }}
+        run: |
+          if [ "$TARGET_ENV" != "dev" ]; then
+            echo "::error::Legacy ML RBAC cleanup is restricted to dev."
+            exit 1
+          fi
+          if [ "$MIGRATION_CONFIRMATION" != "delete-superseded-a100-h100-storage-grants" ]; then
+            echo "::error::Legacy ML RBAC cleanup confirmation did not match."
+            exit 1
+          fi
+
+      - name: Remove superseded A100/H100 storage grants
+        id: cleanup
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.migrate_legacy_ml_rbac && inputs.environment == 'dev' }}
+        continue-on-error: true
+        uses: azure/cli@v2
+        env:
+          AZ_SUB: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          ENV_NAME: ${{ inputs.environment }}
+          MIGRATION_CONFIRMATION: ${{ inputs.migration_confirmation }}
+        with:
+          azcliversion: latest
+          inlineScript: |
+            python3 scripts/cleanup_legacy_ml_rbac.py \
+              --environment "$ENV_NAME" \
+              --confirm "$MIGRATION_CONFIRMATION"
+
       - name: az deployment sub create (status only)
+        id: deploy
+        if: ${{ !cancelled() && steps.validate.outcome == 'success' && steps.whatif.outcome == 'success' && steps.cleanup_request.outcome != 'failure' }}
         uses: azure/cli@v2
         env:
           AZ_SUB:    ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -163,6 +209,12 @@ jobs:
             rm -f create.raw
             # Print only the deployment name (no IDs, no params, no outputs).
             echo "deploy: SUCCESS  name=$DEPLOY_NAME  env=$ENV_NAME"
+
+      - name: Preserve cleanup failure after convergence attempt
+        if: ${{ always() && steps.cleanup.outcome == 'failure' }}
+        run: |
+          echo "::error::Legacy ML RBAC cleanup failed; convergence deployment was still attempted."
+          exit 1
 
       # NOTE: deploy-output-sanitized.json artifact upload removed. Even with
       # `jq` filtering, the deployment output contains resource IDs (and thus
