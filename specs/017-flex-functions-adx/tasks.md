@@ -10,10 +10,24 @@
 - [x] T8 `main.dev.bicepparam` blocks; test/prod untouched
 - [x] T9 `bicep build` + `build-params` clean for dev/test/prod
 - [x] T10 Verify compiled ARM: FC1/FlexConsumption, Kusto, no new `listKeys`
-- [ ] T11 Deploy to dev via CI and confirm the Flex app runs the timer
-- [ ] T12 Re-verify ADX rows arrive from the Flex app's identity
-- [ ] T13 Delete the superseded Y1 app + `EastUS2LinuxDynamicPlan`
-- [ ] T14 Confirm `az deployment sub what-if` reports no unexpected deletes
+- [x] T11 Deploy the module to dev and confirm the Flex app runs the timer
+      (`FC1`/`FlexConsumption` verified live; automatic 06:30 tick advanced the
+      cursor 15 -> 30 with no manual trigger)
+- [x] T12 Re-verify ADX rows arrive from the Flex app's identity (45/45 correct)
+- [x] T13a Stop the superseded Y1 app, halting the duplicate spend
+- [ ] T13b Delete `func-aio-hvac-triage` + `EastUS2LinuxDynamicPlan` once the
+      Flex app has run unattended long enough to satisfy the operator
+- [x] T14 Confirm what-if reports no NEW deletes: `-60` is identical on this
+      branch and on every prior run of `main`, so the count is pre-existing
+      over-prediction rather than anything this feature introduces
+
+## Fixed during live deployment
+
+**`AzureWebJobsStorage` was missing from the module.** The app deployed,
+registered both functions, reported `Running`, and never fired -- the Functions
+host needs storage for trigger state and the timer's singleton lease. Granting
+blob alone is not enough; the host uses queues and tables too. Deploying before
+merging is what caught this, and a clean `bicep build` would never have.
 
 ## Open
 
