@@ -17,9 +17,13 @@
 - [x] T13a Stop the superseded Y1 app, halting the duplicate spend
 - [ ] T13b Delete `func-aio-hvac-triage` + `EastUS2LinuxDynamicPlan` once the
       Flex app has run unattended long enough to satisfy the operator
-- [x] T14 Confirm what-if reports no NEW deletes: `-60` is identical on this
-      branch and on every prior run of `main`, so the count is pre-existing
-      over-prediction rather than anything this feature introduces
+- [x] T14 Attribute the what-if delete count. Baseline on `main` is `-60`, and
+      every prior run reports the same, so that number is pre-existing
+      over-prediction. This branch reports `-62`; the delta is exactly the two
+      role assignments added for the Functions host (`ra-func-queue`,
+      `ra-func-table`), which is the same `roleAssignments` over-prediction
+      rather than a real deletion. Incremental sub-scope deployments cannot
+      delete a resource the template does not declare.
 
 ## Fixed during live deployment
 
