@@ -79,8 +79,28 @@ resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
   }
 }
 
+// Storage endpoints built from the account name rather than read off the
+// resource. `appSettings` is materialised in a for-expression, which ARM must
+// resolve at the start of the deployment, so referencing sa.properties there
+// fails with BCP178. The suffix comes from the cloud environment, so this stays
+// correct in sovereign clouds instead of hardcoding "core.windows.net".
+var storageSuffix = environment().suffixes.storage
+
 var baseSettings = union(
   appSettings,
+  {
+    // The Functions host itself needs a storage account for trigger state,
+    // singleton leases, and the timer's schedule ledger. Without it the app
+    // deploys, registers its functions, and then never fires -- which looks
+    // like a broken trigger rather than missing configuration.
+    //
+    // Set as the identity-based triple (no connection string, no key), which
+    // is why the app's identity needs the blob/queue/table data roles.
+    'AzureWebJobsStorage__accountName': storageAccountName
+    'AzureWebJobsStorage__blobServiceUri': 'https://${storageAccountName}.blob.${storageSuffix}'
+    'AzureWebJobsStorage__queueServiceUri': 'https://${storageAccountName}.queue.${storageSuffix}'
+    'AzureWebJobsStorage__tableServiceUri': 'https://${storageAccountName}.table.${storageSuffix}'
+  },
   empty(appInsightsConnectionString)
     ? {}
     : { APPLICATIONINSIGHTS_CONNECTION_STRING: appInsightsConnectionString }

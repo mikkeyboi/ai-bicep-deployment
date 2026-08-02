@@ -413,6 +413,36 @@ module raFuncStorage 'modules/role-assignment/main.bicep' = if (enableFunc) {
   }
 }
 
+// AzureWebJobsStorage is configured identity-based, and the Functions host
+// uses queues and tables for singleton leases and timer schedule state -- not
+// just blobs. Granting blob alone lets the app deploy and then sit silent,
+// because the host cannot take the timer's lease.
+module raFuncQueue 'modules/role-assignment/main.bicep' = if (enableFunc) {
+  name: 'ra-func-queue'
+  params: {
+    roleAssignment: {
+      principalId: func!.outputs.principalId
+      roleDefinitionIdOrName: 'Storage Queue Data Contributor'
+      scopeResourceId: sa.outputs.id
+      principalType: 'ServicePrincipal'
+      description: 'Functions host -> queue-backed trigger state'
+    }
+  }
+}
+
+module raFuncTable 'modules/role-assignment/main.bicep' = if (enableFunc) {
+  name: 'ra-func-table'
+  params: {
+    roleAssignment: {
+      principalId: func!.outputs.principalId
+      roleDefinitionIdOrName: 'Storage Table Data Contributor'
+      scopeResourceId: sa.outputs.id
+      principalType: 'ServicePrincipal'
+      description: 'Functions host -> timer schedule ledger'
+    }
+  }
+}
+
 module raFuncFoundry 'modules/role-assignment/main.bicep' = if (enableFunc && config.foundry.enabled) {
   name: 'ra-func-foundry'
   params: {
