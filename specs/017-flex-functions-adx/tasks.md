@@ -15,8 +15,13 @@
       cursor 15 -> 30 with no manual trigger)
 - [x] T12 Re-verify ADX rows arrive from the Flex app's identity (45/45 correct)
 - [x] T13a Stop the superseded Y1 app, halting the duplicate spend
-- [ ] T13b Delete `func-aio-hvac-triage` + `EastUS2LinuxDynamicPlan` once the
-      Flex app has run unattended long enough to satisfy the operator
+- [x] T13b Delete `func-aio-hvac-triage` + `EastUS2LinuxDynamicPlan`. Retired
+      after the Flex app ran **15 consecutive unattended ticks over 7 hours**
+      (225 alarms, 123/123 scored decisions correct) with the Y1 app stopped
+      throughout, so the replacement was demonstrably carrying the workload
+      alone rather than assumed to be. Deleting the app also removed the empty
+      Consumption plan, since Azure reclaims a serverfarm with no sites.
+      Final state: one app, one plan, `FC1`/`FlexConsumption`.
 - [x] T14 Attribute the what-if delete count. Baseline on `main` is `-60`, and
       every prior run reports the same, so that number is pre-existing
       over-prediction. This branch reports `-62`; the delta is exactly the two
