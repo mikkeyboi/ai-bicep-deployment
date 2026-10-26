@@ -37,3 +37,12 @@ specs/003-matrix-bridge/
 | VIII. Azure Consumption Billing Only | ✅ | continuwuity + cloudflared are container images; ACA is consumption |
 
 No complexity exceptions.
+
+## Cloudflare security update — 2026-10
+
+Pin the sidecar to official cloudflared 2026.10.4 for the eMudhra certificate
+compromise. Preserve the homeserver image, secret references, hostname input,
+storage mount and one-replica limit. Synchronize image examples and document
+single-writer maintenance. Compile with a placeholder hostname and scan source
+for secrets; do not include private deployment identifiers or operational logs.
+

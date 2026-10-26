@@ -41,3 +41,11 @@ Phase F — GH config + commit + PR
 - T050 `gh variable set MATRIX_HOSTNAME --env dev --body
   "matrix.<operator-domain>"`.
 - T051 Commit, push, open PR, merge to main.
+
+Phase G — Cloudflare certificate security update (2026-10)
+- [x] Pin cloudflared 2026.10.4; synchronize image examples and public-safe
+  single-writer maintenance guidance without deployment-specific records.
+- [x] Compiled the Matrix module and development parameters with a placeholder
+  hostname; confirmed the fixed image and one-replica limit. Unrelated existing
+  full-stack lint warnings remain. Repository-configured Gitleaks scan passed
+  with zero findings; no private deployment records were added.

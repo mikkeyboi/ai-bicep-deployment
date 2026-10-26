@@ -20,7 +20,7 @@ type matrixConfig = {
   hostname: string
   // Pinned image tags. Bumps land in paramfiles, not code.
   continuwuityImage: string         // e.g. 'forgejo.ellis.link/continuwuation/continuwuity:v0.5.5'
-  cloudflaredImage: string          // e.g. 'docker.io/cloudflare/cloudflared:2026.3.0'
+  cloudflaredImage: string          // e.g. 'docker.io/cloudflare/cloudflared:2026.10.4'
   // Sidecar gate. Lets operator deploy continuwuity alone for first pass.
   enableCloudflareTunnel: bool
   // ACA scaling
