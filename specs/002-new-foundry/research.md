@@ -60,7 +60,7 @@ itself, no connection is required for chat/embedding inference.
 ## D6. RBAC
 
 The workload UAMI receives `Cognitive Services User`
-(`a97b65f3-24c7-4388-baec-2e87135dc908`) on the Foundry account. This
+on the Foundry account. This
 role permits Azure OpenAI data-plane reads (inference). The account's
 own system-assigned identity remains for outbound storage/KV access if
 ever needed (none in 002).

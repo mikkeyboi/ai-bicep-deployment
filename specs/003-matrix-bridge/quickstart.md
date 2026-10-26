@@ -96,6 +96,18 @@ access_token   = <token from step 6>
   `main.dev.bicepparam` to the new pinned tag; CI redeploys.
 - **Back up RocksDB**: snapshot the Azure Files share periodically
   (`az storage file download-batch` or Azure Backup).
+- **Bump cloudflared**: update `matrix.cloudflaredImage` in
+  `main.dev.bicepparam` to an exact official fixed release (2026.10.4 for the
+  2026-10 certificate incident). Restarting the old image does not apply a fix.
+  The sidecar and homeserver share a revision and persistent RocksDB: do not
+  add app replicas or overlap old/new homeserver revisions. Before deploying
+  an image change, use revision maintenance to stop the old revision, confirm
+  zero replicas, and snapshot the quiescent file share. Start the patched
+  revision, verify public `/_matrix/client/versions` and the connected version
+  in Cloudflare, and retain one active replica in single-revision mode.
+  Expect a Matrix interruption. Keep the hostname, credentials, homeserver
+  image and storage unchanged. Use operator-supplied resource identifiers;
+  never commit tokens, private hostnames, IDs, logs or snapshot records.
 
 ## Notes
 

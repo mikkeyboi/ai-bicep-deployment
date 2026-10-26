@@ -37,7 +37,7 @@ param config = {
   matrix: {
     hostname: readEnvironmentVariable('MATRIX_HOSTNAME', '')
     continuwuityImage: 'forgejo.ellis.link/continuwuation/continuwuity:v0.5.5'
-    cloudflaredImage: 'docker.io/cloudflare/cloudflared:2026.3.0'
+    cloudflaredImage: 'docker.io/cloudflare/cloudflared:2026.10.4'
     // Cloudflared sidecar enabled; token sourced from KV secret
     // 'cloudflare-tunnel-token' via UAMI secret reference.
     enableCloudflareTunnel: true

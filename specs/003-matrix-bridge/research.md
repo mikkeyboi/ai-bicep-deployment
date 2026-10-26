@@ -136,6 +136,15 @@ ACA pulls the secret at revision-create time using the workload UAMI
 | Container | Image | Tag | Source |
 | --- | --- | --- | --- |
 | continuwuity | `forgejo.ellis.link/continuwuation/continuwuity` | `v0.5.5` | Latest stable release as of 2026-05 |
-| cloudflared | `docker.io/cloudflare/cloudflared` | `2026.3.0` | Latest semver tag on Docker Hub |
+| cloudflared | `docker.io/cloudflare/cloudflared` | `2026.10.4` | Official fixed release for the 2026-10 certificate incident |
 
 Both are exposed as parameters so future bumps are paramfile-only.
+
+The [eMudhra certificate compromise](https://blog.cloudflare.com/emudhra-certificate-compromise/)
+requires cloudflared 2026.10.2 or newer. The selected official 2026.10.4 image
+exceeds that minimum. The loopback HTTP origin has no certificate to replace;
+do not disable TLS verification for HTTPS origins after this update.
+
+Updating the sidecar creates a revision containing both containers. Avoid
+overlapping homeserver revisions or extra replicas against the shared RocksDB
+directory; use a controlled maintenance interruption and a quiescent snapshot.

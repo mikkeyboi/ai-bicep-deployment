@@ -17,7 +17,7 @@ param keyVaultUri string
 @description('Pinned continuwuity image, e.g. forgejo.ellis.link/continuwuation/continuwuity:v0.5.5')
 param continuwuityImage string
 
-@description('Pinned cloudflared image, e.g. docker.io/cloudflare/cloudflared:2026.3.0')
+@description('Pinned cloudflared image, e.g. docker.io/cloudflare/cloudflared:2026.10.4')
 param cloudflaredImage string
 
 @description('Cloudflare Tunnel sidecar gate. False = continuwuity only.')
