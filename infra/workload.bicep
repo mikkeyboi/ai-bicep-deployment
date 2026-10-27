@@ -21,6 +21,9 @@ import {
   mlWorkspace as nameMlw
   mlComputeInstance as nameMlCi
   mlComputeCluster as nameMlCc
+  functionApp as nameFunc
+  functionPlan as nameFuncPlan
+  adxCluster as nameAdx
 } from 'shared/naming.bicep'
 
 param config environmentConfig
@@ -42,6 +45,18 @@ var srchName  = nameSearch (config.workloadName, config.environment, config.loca
 var pnaResource = config.enablePublicNetworkAccess ? 'Enabled' : 'Disabled'
 var enableSearch = config.?enableAiSearch ?? false
 var enableMatrix = config.?enableMatrix ?? false
+
+// Feature 017: agent-workflow telemetry (ADX) and its timer trigger (Function
+// App on Flex Consumption). Both are optional and default off, so test/prod
+// parameter files that omit them compile and deploy unchanged.
+var enableAdx = config.?dataExplorer.?enabled ?? false
+var enableFunc = config.?functionApp.?enabled ?? false
+// Adopt-by-name: these resources predate their templating. Without the
+// override the deployment would create a SECOND, CAF-named cluster and leave
+// the original holding all the data.
+var adxName = config.?dataExplorer.?nameOverride ?? nameAdx(config.workloadName, config.environment, config.location, instance, uniqueSeed)
+var funcName = nameFunc(config.workloadName, config.environment, config.location, instance)
+var funcPlanName = nameFuncPlan(config.workloadName, config.environment, config.location, instance)
 var caeName = nameCae(config.workloadName, config.environment, config.location, instance)
 var caName  = nameCa (config.workloadName, config.environment, config.location, instance)
 var vnetName = nameVnet(config.workloadName, config.environment, config.location, instance)
@@ -137,6 +152,72 @@ module srch 'modules/ai-search/main.bicep' = if (enableSearch) {
     skuName: 'basic'
     publicNetworkAccess: config.enablePublicNetworkAccess ? 'enabled' : 'disabled'
   }
+}
+
+// ----- Agent-workflow telemetry + trigger (feature 017) -----
+//
+// ADX stores one row per triage decision and one per agent turn, which is what
+// makes a failure attributable to a step rather than only visible as a wrong
+// final answer. The Function App is the timer that drives the workflow: a
+// `while` loop is a script somebody runs, a timer trigger is infrastructure
+// that runs whether or not anyone is watching.
+//
+// Table/function DDL is deliberately NOT here -- see the module header.
+
+module adx 'modules/data-explorer/main.bicep' = if (enableAdx) {
+  name: 'adx'
+  params: {
+    name: adxName
+    location: config.location
+    tags: tags
+    skuName: config.?dataExplorer.?skuName ?? 'Dev(No SLA)_Standard_E2a_v4'
+    skuTier: config.?dataExplorer.?skuTier ?? 'Basic'
+    capacity: config.?dataExplorer.?capacity ?? 1
+    databaseName: config.?dataExplorer.?databaseName ?? 'hvac'
+    softDeletePeriod: config.?dataExplorer.?softDeletePeriod ?? 'P31D'
+    hotCachePeriod: config.?dataExplorer.?hotCachePeriod ?? 'P7D'
+    publicNetworkAccess: pnaResource
+  }
+}
+
+module func 'modules/function-app/main.bicep' = if (enableFunc) {
+  name: 'func'
+  params: {
+    name: funcName
+    planName: funcPlanName
+    location: config.location
+    tags: tags
+    storageAccountName: stName
+    runtimeName: 'python'
+    // Python 3.12 is supported through October 2028; 3.11 lapses in 2027.
+    runtimeVersion: config.?functionApp.?runtimeVersion ?? '3.12'
+    instanceMemoryMB: config.?functionApp.?instanceMemoryMB ?? 2048
+    maximumInstanceCount: config.?functionApp.?maximumInstanceCount ?? 40
+    appInsightsConnectionString: appi.outputs.connectionString
+    appSettings: union(
+      config.?functionApp.?appSettings ?? {},
+      // Resolved coordinates the app cannot know statically. Endpoints and
+      // names only -- never a key or a connection string.
+      enableAdx
+        ? {
+            ADX_CLUSTER_URI: adx!.outputs.uri
+            ADX_DATABASE: adx!.outputs.databaseName
+          }
+        : {},
+      {
+        TRIAGE_STATE_ACCOUNT: stName
+      },
+      // The project endpoint only exists when Foundry is deployed. Guarding it
+      // keeps the function app independently toggleable rather than silently
+      // coupling it to the Foundry flag.
+      config.foundry.enabled
+        ? { AIPLATFORM_PROJECT_ENDPOINT: '${foundry!.outputs.endpoint}api/projects/${projName}' }
+        : {}
+    )
+  }
+  dependsOn: [
+    sa
+  ]
 }
 
 // ----- Foundry account + child project + model deployments -----
@@ -301,6 +382,90 @@ module raSrch 'modules/role-assignment/main.bicep' = if (enableSearch) {
       scopeResourceId: srch!.outputs.id
       principalType: 'ServicePrincipal'
       description: 'Workload MI -> AI Search index R/W'
+    }
+  }
+}
+
+// ----- RBAC: the Function App's OWN system-assigned identity (feature 017) --
+//
+// These were manual `az role assignment create` calls while the app was
+// click-deployed, which meant a clean deployment did not reproduce live state.
+// Back-filling them here is the point of the feature: the app cannot read its
+// deployment package, reach the model endpoint, or persist its cursor without
+// them, so leaving them manual made the deployment a lie.
+//
+// The ADX *database ingestor* grant is deliberately absent. Kusto database
+// principals are a data-plane concept with no ARM role-assignment equivalent,
+// so it is applied alongside the table DDL by the consuming repo's KQL script.
+
+module raFuncStorage 'modules/role-assignment/main.bicep' = if (enableFunc) {
+  name: 'ra-func-storage'
+  params: {
+    roleAssignment: {
+      principalId: func!.outputs.principalId
+      // Flex mounts the deployment package from blob using this identity, and
+      // the timer's cursor blob lives in the same account.
+      roleDefinitionIdOrName: 'Storage Blob Data Contributor'
+      scopeResourceId: sa.outputs.id
+      principalType: 'ServicePrincipal'
+      description: 'Function App MI -> deployment package + cursor state'
+    }
+  }
+}
+
+// AzureWebJobsStorage is configured identity-based, and the Functions host
+// uses queues and tables for singleton leases and timer schedule state -- not
+// just blobs. Granting blob alone lets the app deploy and then sit silent,
+// because the host cannot take the timer's lease.
+module raFuncQueue 'modules/role-assignment/main.bicep' = if (enableFunc) {
+  name: 'ra-func-queue'
+  params: {
+    roleAssignment: {
+      principalId: func!.outputs.principalId
+      roleDefinitionIdOrName: 'Storage Queue Data Contributor'
+      scopeResourceId: sa.outputs.id
+      principalType: 'ServicePrincipal'
+      description: 'Functions host -> queue-backed trigger state'
+    }
+  }
+}
+
+module raFuncTable 'modules/role-assignment/main.bicep' = if (enableFunc) {
+  name: 'ra-func-table'
+  params: {
+    roleAssignment: {
+      principalId: func!.outputs.principalId
+      roleDefinitionIdOrName: 'Storage Table Data Contributor'
+      scopeResourceId: sa.outputs.id
+      principalType: 'ServicePrincipal'
+      description: 'Functions host -> timer schedule ledger'
+    }
+  }
+}
+
+module raFuncFoundry 'modules/role-assignment/main.bicep' = if (enableFunc && config.foundry.enabled) {
+  name: 'ra-func-foundry'
+  params: {
+    roleAssignment: {
+      principalId: func!.outputs.principalId
+      roleDefinitionIdOrName: 'Cognitive Services User'
+      scopeResourceId: foundry!.outputs.id
+      principalType: 'ServicePrincipal'
+      description: 'Function App MI -> Foundry model + agent data plane'
+    }
+  }
+}
+
+module raFuncSearch 'modules/role-assignment/main.bicep' = if (enableFunc && enableSearch) {
+  name: 'ra-func-search'
+  params: {
+    roleAssignment: {
+      principalId: func!.outputs.principalId
+      // Read-only: the agent queries the knowledge index, it never writes it.
+      roleDefinitionIdOrName: 'Search Index Data Reader'
+      scopeResourceId: srch!.outputs.id
+      principalType: 'ServicePrincipal'
+      description: 'Function App MI -> knowledge base retrieval'
     }
   }
 }
@@ -497,6 +662,19 @@ output managedIdentityClientId string = mi.outputs.clientId
 output logAnalyticsWorkspaceId string = law.outputs.id
 output appInsightsId string = appi.outputs.id
 output aiSearchId string = enableSearch ? (srch!.outputs.id) : ''
+
+// ----- Agent workflow: telemetry + trigger (feature 017) -----
+output adxEnabled bool = enableAdx
+output adxClusterId string = enableAdx ? adx!.outputs.id : ''
+output adxClusterUri string = enableAdx ? adx!.outputs.uri : ''
+output adxDatabaseName string = enableAdx ? adx!.outputs.databaseName : ''
+output functionAppEnabled bool = enableFunc
+output functionAppId string = enableFunc ? func!.outputs.id : ''
+output functionAppName string = enableFunc ? func!.outputs.name : ''
+output functionAppHostName string = enableFunc ? func!.outputs.defaultHostName : ''
+// Emitted so the KQL apply step can grant the database ingestor role to the
+// right identity without a human copying a GUID between portals.
+output functionAppPrincipalId string = enableFunc ? func!.outputs.principalId : ''
 
 // ----- Azure Machine Learning (feature 007) -----
 output mlEnabled bool = enableMl

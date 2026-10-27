@@ -36,6 +36,8 @@ jobs:
         run: bicep lint infra/main.bicep
       - name: bicep build
         run: bicep build infra/main.bicep --outdir build/
+      - name: Python migration tests
+        run: python3 -m unittest discover -s tests -v
       # NOTE: ARM template artifact intentionally NOT uploaded. Compiled JSON
       # contains the same identifiers the Bicep does once parameters resolve,
       # and artifacts are downloadable by anyone with read access to the repo
