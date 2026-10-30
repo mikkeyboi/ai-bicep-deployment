@@ -186,7 +186,8 @@ type azureMcpConfig = {
   containerRegistryName: string
   @description('Repository of the gateway image inside that registry.')
   gatewayImageRepository: string
-  @description('Pinned gateway image tag. scripts/deploy-azure-mcp.sh builds it in ACR when missing.')
+  @description('Gateway image tag: a content hash of apps/azure-mcp-gateway set by scripts/deploy-azure-mcp.sh, which builds it in ACR when missing.')
+  @minLength(1)
   gatewayImageTag: string
   @description('Comma-separated Entra object IDs allowed to use the connector. Sourced from $env:AZURE_MCP_ALLOWED_PRINCIPAL_IDS at compile time; MUST NOT be committed (Constitution II).')
   @minLength(36)

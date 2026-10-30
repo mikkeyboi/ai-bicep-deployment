@@ -20,7 +20,9 @@ param config = {
     // Same registry the ML workspace auto-attached (feature 011).
     containerRegistryName: '51119126436640639d290bc8189dcbbf'
     gatewayImageRepository: 'azure-mcp-gateway'
-    gatewayImageTag: '0.1.0'
+    // Content hash of apps/azure-mcp-gateway, computed by the deploy script,
+    // so any gateway code change gets a new immutable tag automatically.
+    gatewayImageTag: readEnvironmentVariable('AZURE_MCP_GATEWAY_IMAGE_TAG', '')
     allowedPrincipalIds: readEnvironmentVariable('AZURE_MCP_ALLOWED_PRINCIPAL_IDS', '')
     // Read-only by default. To let Claude change resources, add
     // 'Contributor' here and set readOnly: false.

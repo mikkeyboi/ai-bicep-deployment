@@ -44,13 +44,25 @@ curl -si -X POST <MCP server URL> -H 'content-type: application/json' -d '{}' | 
 
 Ask Claude: "List my Azure resource groups."
 
+## Updating
+
+Every change goes through the same command, `scripts/deploy-azure-mcp.sh`.
+It shows the what-if before applying, then rolls a new revision: the old one
+serves until the new one is healthy, and Claude stays connected because OAuth
+state lives in Table Storage.
+
+| Change | Edit | Then |
+| --- | --- | --- |
+| Azure MCP Server version | `azureMcpImage` in `azure-mcp.<env>.bicepparam` (the script prints newer MCR tags) | run the script |
+| Gateway code | `apps/azure-mcp-gateway/app.py` | run the script (the image tag is a content hash, so it rebuilds automatically) |
+| Gateway dependencies | `requirements.in`, then `uv pip compile --python-version 3.12 --generate-hashes requirements.in -o requirements.txt` | run the script |
+| Permissions / sizing | `subscriptionRoles`, `readOnly`, CPU/memory in the paramfile | run the script |
+
 ## Change access
 
 - **Allow writes**: in `azure-mcp.<env>.bicepparam` set
   `subscriptionRoles: [ 'Reader', 'Contributor' ]` and `readOnly: false`,
   then redeploy.
-- **Gateway code change**: bump `gatewayImageTag`, then redeploy. The script
-  builds the new tag.
 - **Revoke a user**: remove them from `AZURE_MCP_ALLOWED_PRINCIPAL_IDS` and
   redeploy. Their existing tokens fail the gateway allowlist immediately after
   the new revision starts. Removing their Entra assignment for the enterprise

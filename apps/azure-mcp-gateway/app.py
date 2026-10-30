@@ -34,7 +34,7 @@ from azure.identity.aio import ManagedIdentityCredential
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from key_value.aio.stores.azure_tables import AzureTablesStore
+from key_value.aio.stores.azure_tables import AzureTablesSanitizationStrategy, AzureTablesStore
 from key_value.aio.wrappers.encryption import FernetEncryptionWrapper
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse
@@ -155,6 +155,10 @@ def build_app():
             endpoint=_env("STORAGE_TABLE_ENDPOINT").rstrip("/"),
             credential=credential,
             table_name=_env("STORAGE_TABLE_NAME"),
+            # CIMD client IDs are URLs, and '/', '\', '#', '?' are illegal in
+            # Table keys: such keys are stored under a stable SHA-256 instead.
+            collection_sanitization_strategy=AzureTablesSanitizationStrategy(),
+            key_sanitization_strategy=AzureTablesSanitizationStrategy(),
         ),
         fernet=Fernet(base64.urlsafe_b64encode(_derive_key(master_key, b"oauth-storage"))),
     )

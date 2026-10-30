@@ -51,6 +51,14 @@ if [[ -z "${AZURE_MCP_ALLOWED_PRINCIPAL_IDS:-}" ]]; then
 fi
 export AZURE_MCP_ALLOWED_PRINCIPAL_IDS
 
+# Gateway image tag = hash of the files that go into the image, so editing
+# the gateway and re-running this script always ships the new code.
+if [[ -z "${AZURE_MCP_GATEWAY_IMAGE_TAG:-}" ]]; then
+  AZURE_MCP_GATEWAY_IMAGE_TAG="src-$(cd "$GATEWAY_SRC" && find . -type f ! -path '*/__pycache__/*' ! -path './.venv/*' ! -name '*.pyc' \
+    | LC_ALL=C sort | xargs sha256sum | sha256sum | cut -c1-12)"
+fi
+export AZURE_MCP_GATEWAY_IMAGE_TAG
+
 # --- Resolve config from the compiled paramfile ---
 PARAMS_JSON="$(bicep build-params "$PARAMFILE" --stdout | python3 -c 'import json,sys; print(json.load(sys.stdin)["parametersJson"])')"
 # cfg <dotted.path> under config, e.g. cfg azureMcp.gatewayImageTag
@@ -63,7 +71,8 @@ print(v)' "$PARAMS_JSON" "$1"
 WORKLOAD="$(cfg workloadName)"
 ACR="$(cfg azureMcp.containerRegistryName)"
 IMAGE_REPO="$(cfg azureMcp.gatewayImageRepository)"
-IMAGE_TAG="$(cfg azureMcp.gatewayImageTag)"
+IMAGE_TAG="$AZURE_MCP_GATEWAY_IMAGE_TAG"
+AZURE_MCP_IMAGE="$(cfg azureMcp.azureMcpImage)"
 
 RG="$(az group list --query "[?tags.workload=='$WORKLOAD' && tags.environment=='$ENVIRONMENT' && tags.managedBy=='bicep'].name | [0]" -o tsv)"
 [[ -n "$RG" ]] || { echo "no resource group tagged workload=$WORKLOAD environment=$ENVIRONMENT; deploy infra/main.bicep first" >&2; exit 1; }
@@ -71,6 +80,18 @@ KV="$(az keyvault list -g "$RG" --query "[0].name" -o tsv)"
 echo "Environment    : $ENVIRONMENT"
 echo "Resource group : $RG"
 echo "Allowed users  : $(echo "$AZURE_MCP_ALLOWED_PRINCIPAL_IDS" | tr ',' '\n' | while read -r p; do mask "$p"; done | paste -sd, -)"
+
+# --- Newer Azure MCP Server releases (informational) ---
+python3 - "$AZURE_MCP_IMAGE" <<'PY' || true
+import json, re, sys, urllib.request
+repo, _, pinned = sys.argv[1].partition("/")[2].rpartition(":")
+def key(t):
+    m = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?", t)
+    return None if not m else (int(m[1]), int(m[2]), int(m[3]), int(m[4]) if m[4] else 10**6)
+tags = json.load(urllib.request.urlopen(f"https://mcr.microsoft.com/v2/{repo}/tags/list", timeout=10))["tags"]
+newer = sorted((t for t in tags if key(t) and key(pinned) and key(t) > key(pinned)), key=key)
+print(f"Azure MCP      : {pinned}" + (f" (newer: {', '.join(newer[-3:])})" if newer else " (latest)"))
+PY
 
 # --- Gateway master key (generated once; never printed) ---
 SECRET_NAME="azure-mcp-gateway-master-key"
