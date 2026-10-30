@@ -1,0 +1,37 @@
+// infra/parameters/azure-mcp.dev.bicepparam
+// Azure MCP Claude connector (feature 016), dev. Deployed by
+// scripts/deploy-azure-mcp.sh into the main stack's resource group.
+//
+// Allowed principals are sourced at compile time from
+// $env:AZURE_MCP_ALLOWED_PRINCIPAL_IDS (the deploy script defaults it to
+// the signed-in operator); object IDs MUST NOT be committed (Constitution II).
+
+using '../azure-mcp/main.bicep'
+
+param config = {
+  environment: 'dev'
+  location: 'eastus2'
+  workloadName: 'aio'
+  owner: 'mikkeyboi'           // GitHub handle, NOT email
+  costCenter: 'poc'
+  azureMcp: {
+    // Azure MCP Server 4.0.0 (beta, preferred over 3.0.0 stable). Pinned.
+    azureMcpImage: 'mcr.microsoft.com/azure-sdk/azure-mcp:4.0.0-beta.4'
+    // Same registry the ML workspace auto-attached (feature 011).
+    containerRegistryName: '51119126436640639d290bc8189dcbbf'
+    gatewayImageRepository: 'azure-mcp-gateway'
+    gatewayImageTag: '0.1.0'
+    allowedPrincipalIds: readEnvironmentVariable('AZURE_MCP_ALLOWED_PRINCIPAL_IDS', '')
+    // Read-only by default. To let Claude change resources, add
+    // 'Contributor' here and set readOnly: false.
+    subscriptionRoles: [ 'Reader' ]
+    readOnly: true
+    namespaces: []
+    minReplicas: 0
+    maxReplicas: 1
+    gatewayCpu: '0.25'
+    gatewayMemory: '0.5Gi'
+    azureMcpCpu: '0.5'
+    azureMcpMemory: '1Gi'
+  }
+}

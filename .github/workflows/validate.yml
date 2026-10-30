@@ -8,6 +8,7 @@ on:
       - 'scripts/**'
       - 'bicepconfig.json'
       - '.gitleaks.toml'
+      - 'apps/**'
   workflow_dispatch:
 
 permissions:
@@ -36,6 +37,15 @@ jobs:
         run: bicep lint infra/main.bicep
       - name: bicep build
         run: bicep build infra/main.bicep --outdir build/
+      # Feature 016: operator-deployed entry point (Graph resources), so it is
+      # linted/built here but never validated or deployed with the CI identity.
+      - name: bicep lint + build (azure-mcp)
+        env:
+          AZURE_MCP_ALLOWED_PRINCIPAL_IDS: '11111111-1111-1111-1111-111111111111'
+        run: |
+          bicep lint infra/azure-mcp/main.bicep
+          bicep build infra/azure-mcp/main.bicep --outdir build/
+          bicep build-params infra/parameters/azure-mcp.dev.bicepparam --outfile build/azure-mcp.dev.json
       # NOTE: ARM template artifact intentionally NOT uploaded. Compiled JSON
       # contains the same identifiers the Bicep does once parameters resolve,
       # and artifacts are downloadable by anyone with read access to the repo

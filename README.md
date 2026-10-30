@@ -38,6 +38,9 @@ managed identity, and RBAC.
 
 Full operator runbook: [`specs/001-aio-foundation/quickstart.md`](specs/001-aio-foundation/quickstart.md).
 
+Azure MCP as a Claude connector (Entra sign-in, read-only by default):
+[`specs/016-azure-mcp-connector/quickstart.md`](specs/016-azure-mcp-connector/quickstart.md).
+
 ## Layout
 
 ```
@@ -47,6 +50,8 @@ infra/
   shared/                   # types, naming, tags, region capabilities
   modules/                  # one folder per resource family
   parameters/main.<env>.bicepparam
+  azure-mcp/main.bicep      # Azure MCP Claude connector (operator-deployed; spec 016)
+apps/azure-mcp-gateway/     # OAuth gateway in front of Azure MCP Server
 .github/workflows/          # validate.yml (PR gate), deploy.yml (OIDC)
 scripts/                    # deploy.ps1, deploy.sh, setup-oidc.ps1, preflight.ps1
 specs/001-aio-foundation/   # spec, plan, research, data-model, contracts, tasks

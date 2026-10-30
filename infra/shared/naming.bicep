@@ -138,3 +138,8 @@ func mlComputeInstance(workload string, env string, location string, processor s
 @description('AML compute cluster (autoscale, scales to zero). Processor class in the instance slot (GPU-ready), same naming rules as the compute instance. Name: cc-<workload>-<env>-<region>-<processor>.')
 func mlComputeCluster(workload string, env string, location string, processor string) string =>
   nameOf('cc', workload, env, location, processor)
+
+@export()
+@description('Entra app registration uniqueName (directory-wide unique key for the Graph Bicep extension). Not an Azure resource name, but follows the same pattern.')
+func entraApp(workload string, env string, location string, instance string) string =>
+  nameOf('app', workload, env, location, instance)

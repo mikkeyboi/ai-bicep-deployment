@@ -48,8 +48,8 @@ type roleAssignmentSpec = {
   // Built-in role name (resolved to ID in module) or a full GUID.
   roleDefinitionIdOrName: string
   scopeResourceId: string
-  @description('Deployment scope for the assignment. Defaults to resourceGroup; storageAccount narrows it to the named storage resource.')
-  scopeKind: ('resourceGroup' | 'storageAccount')?
+  @description('Deployment scope for the assignment. Defaults to resourceGroup; storageAccount / containerRegistry / keyVaultSecret narrow it to the resource named by scopeResourceId (same resource group).')
+  scopeKind: ('resourceGroup' | 'storageAccount' | 'containerRegistry' | 'keyVaultSecret')?
   principalType: principalType
   description: string?
 }
@@ -173,4 +173,51 @@ type environmentConfig = {
   matrix: matrixConfig?
   @description('Optional. Azure Machine Learning workspace + attached compute (feature 007). When omitted or enabled=false, no ML resources are deployed; test/prod that omit it compile and deploy unchanged.')
   machineLearning: machineLearningConfig?
+}
+
+// ----- Azure MCP connector (feature 016) -----
+
+@export()
+@description('Azure MCP Server behind an authenticating OAuth gateway, on a public Container Apps environment, for use as a Claude custom connector. Deployed by its own entry point (infra/azure-mcp/main.bicep) because the Entra app registration needs directory permissions the CI principal does not hold.')
+type azureMcpConfig = {
+  @description('Pinned Azure MCP Server image, e.g. mcr.microsoft.com/azure-sdk/azure-mcp:4.0.0-beta.4. Never :latest.')
+  azureMcpImage: string
+  @description('NAME of the existing Container Registry (same resource group) that hosts the gateway image.')
+  containerRegistryName: string
+  @description('Repository of the gateway image inside that registry.')
+  gatewayImageRepository: string
+  @description('Pinned gateway image tag. scripts/deploy-azure-mcp.sh builds it in ACR when missing.')
+  gatewayImageTag: string
+  @description('Comma-separated Entra object IDs allowed to use the connector. Sourced from $env:AZURE_MCP_ALLOWED_PRINCIPAL_IDS at compile time; MUST NOT be committed (Constitution II).')
+  @minLength(36)
+  allowedPrincipalIds: string
+  @description('Built-in roles granted at SUBSCRIPTION scope to the Azure MCP Server identity. Reader by default; add Contributor (and set readOnly=false) to allow changes.')
+  subscriptionRoles: string[]
+  @description('Pass --read-only to Azure MCP Server so write tools are not exposed.')
+  readOnly: bool
+  @description('Service namespaces to expose (e.g. storage, monitor). Empty = all.')
+  namespaces: string[]
+  @minValue(0)
+  @maxValue(1)
+  minReplicas: int
+  @description('Kept at 1: MCP sessions are per-replica.')
+  @minValue(1)
+  @maxValue(1)
+  maxReplicas: int
+  gatewayCpu: string
+  gatewayMemory: string
+  azureMcpCpu: string
+  azureMcpMemory: string
+}
+
+@export()
+@description('Top-level shape consumed by infra/azure-mcp/main.bicep. Shares the naming/tag inputs of environmentConfig so names line up with the main stack.')
+type azureMcpDeploymentConfig = {
+  environment: envName
+  location: string
+  workloadName: string
+  instance: string?
+  owner: string
+  costCenter: string
+  azureMcp: azureMcpConfig
 }
