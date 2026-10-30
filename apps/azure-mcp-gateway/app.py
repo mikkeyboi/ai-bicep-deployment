@@ -4,7 +4,9 @@ Claude (or any MCP client) talks to this gateway over Streamable HTTP. The
 gateway is an OAuth 2.1 authorization server for the client (DCR, CIMD, S256
 PKCE, refresh rotation) and delegates the actual sign-in to Microsoft Entra
 ID. Every MCP request is then proxied to Azure MCP Server, which runs as a
-sidecar on 127.0.0.1 in the same Container App replica.
+sidecar on 127.0.0.1 in the same Container App replica. The gateway also
+serves its own foundry_* tools (foundry_tools.py) for model deployments and
+agents, running as the Azure MCP Server identity.
 
 Security properties:
 - Entra sign-in is single-tenant, and the enterprise app requires an
@@ -46,6 +48,9 @@ from fastmcp.server.auth.oauth_proxy.upstream import AsyncOAuth2Client
 from fastmcp.server.auth.providers.azure import AzureProvider
 from fastmcp.server.dependencies import get_access_token
 from fastmcp.server.providers.proxy import ProxyClient
+from fastmcp.server.transforms.visibility import Visibility
+
+from foundry_tools import FoundryClient, register_foundry_tools
 
 logger = logging.getLogger("azure_mcp_gateway")
 
@@ -54,6 +59,11 @@ MCP_SCOPE = "Mcp.Tools.ReadWrite"
 # Audience Entra expects on a managed-identity federated client assertion.
 TOKEN_EXCHANGE_SCOPE = "api://AzureADTokenExchange/.default"
 UPSTREAM_TIMEOUT_SECONDS = 30.0
+
+# Azure MCP tools hidden from clients: `foundry` proxies Microsoft's hosted
+# Foundry MCP server, which rejects managed-identity tokens (the gateway's own
+# foundry_* tools replace it), and `azd` needs a CLI the container lacks.
+HIDDEN_BACKEND_TOOLS = {"foundry", "azd"}
 
 # Redirect URIs the gateway will accept from MCP clients: the hosted Claude
 # apps, plus loopback on any port for Claude Code and other native clients.
@@ -182,6 +192,15 @@ def build_app():
         forward_incoming_headers=False,
     )
     mcp = create_proxy(backend, name="Azure MCP", auth=auth)
+    mcp.add_transform(Visibility(False, names=HIDDEN_BACKEND_TOOLS, components={"tool"}))
+    register_foundry_tools(
+        mcp,
+        FoundryClient(
+            ManagedIdentityCredential(client_id=_env("FOUNDRY_IDENTITY_CLIENT_ID")),
+            subscription_id=_env("AZURE_SUBSCRIPTION_ID"),
+            arm_url=_env("AZURE_RESOURCE_MANAGER_URL"),
+        ),
+    )
 
     @mcp.custom_route("/healthz", methods=["GET"])
     async def healthz(_: Request) -> PlainTextResponse:

@@ -131,6 +131,11 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'STORAGE_ACCOUNT_NAME', value: storageAccountName }
             { name: 'STORAGE_TABLE_ENDPOINT', value: storageTableEndpoint }
             { name: 'STORAGE_TABLE_NAME', value: storageTableName }
+            // The gateway's own foundry_* tools act as the Azure MCP Server
+            // identity, so they share its RBAC rather than widening the gateway's.
+            { name: 'FOUNDRY_IDENTITY_CLIENT_ID', value: azureMcpIdentityClientId }
+            { name: 'AZURE_SUBSCRIPTION_ID', value: subscription().subscriptionId }
+            { name: 'AZURE_RESOURCE_MANAGER_URL', value: environment().resourceManager }
           ]
           probes: [
             {

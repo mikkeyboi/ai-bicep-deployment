@@ -44,6 +44,21 @@ curl -si -X POST <MCP server URL> -H 'content-type: application/json' -d '{}' | 
 
 Ask Claude: "List my Azure resource groups."
 
+## Foundry tools
+
+Besides Azure MCP's own namespaces, the connector serves `foundry_*` tools.
+They run as the Azure MCP identity, so they can act only on the workload
+resource group's Foundry accounts.
+
+| Area | Tools |
+| --- | --- |
+| Discover | `foundry_list_accounts`, `foundry_list_models`, `foundry_get_quota` |
+| Deployments | `foundry_list_deployments`, `foundry_deploy_model`, `foundry_delete_deployment` |
+| Agents | `foundry_list_agents`, `foundry_get_agent`, `foundry_create_or_update_agent`, `foundry_delete_agent`, `foundry_run_agent` |
+
+Example: "Deploy gpt-4.1-mini on <foundry-account> as `mini`, then create an
+agent called `helper` on it and ask it to say hello."
+
 ## Updating
 
 Every change goes through the same command, `scripts/deploy-azure-mcp.sh`.

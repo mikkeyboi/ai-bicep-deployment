@@ -103,9 +103,24 @@ and evaluation tools. That server accepts the managed identity's token for
 `initialize` / `tools/list`, but every tool call fails with an internal
 server error: it expects a delegated user token (On-Behalf-Of). The same
 identity can call the Foundry ARM and agents APIs directly (verified
-2026-10-30), so this isn't an RBAC gap. Fixing it means switching to
-On-Behalf-Of outbound auth, or adding gateway-native Foundry tools; see
-plan.md.
+2026-10-30), so this isn't an RBAC gap.
+
+Resolution: the gateway hides that `foundry` tool (and `azd`, whose CLI the
+container lacks) and serves its own Foundry tools (`foundry_tools.py`) as the
+Azure MCP Server identity:
+
+- **FR-013**: `foundry_list_accounts`, `foundry_list_models`,
+  `foundry_get_quota`, `foundry_list_deployments`, `foundry_deploy_model`
+  (refuses Marketplace-billed models, waits up to 90 s), and
+  `foundry_delete_deployment` (ARM `2026-09-01`).
+- **FR-014**: `foundry_list_agents`, `foundry_get_agent`,
+  `foundry_create_or_update_agent` (prompt agents; a new version per call),
+  `foundry_delete_agent`, and `foundry_run_agent` (Responses API with
+  `agent_reference`; `previous_response_id` continues a conversation).
+  Foundry agents API `v1`.
+- **FR-015**: Read tools are annotated `readOnlyHint`, while deploy and
+  delete tools are `destructiveHint`, so clients ask before running them.
+  Deployment and agent names are validated before they reach a URL.
 
 ## Out of scope
 
