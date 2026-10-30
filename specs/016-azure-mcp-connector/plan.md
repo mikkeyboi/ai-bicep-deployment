@@ -52,9 +52,10 @@ ACA ingress (external, TLS) ──► gateway :8000   (apps/azure-mcp-gateway)
   Cloudflare as its only public path. Routing a second hostname through that
   tunnel would put the operator's domain in play and couple the two
   services. A Consumption environment costs nothing on its own.
-- **minReplicas 0.** It scales to zero when idle. If cold starts trip
-  Claude's 10-second discovery timeout, set `minReplicas: 1` (about USD 15
-  per month idle).
+- **minReplicas 1.** A scale-from-zero cold start measured about 56 s
+  (two image pulls plus .NET start), far past Claude's 10-second discovery
+  timeout, so one replica stays warm. At the Consumption idle rate that's
+  roughly USD 15 per month.
 
 ## Complexity Tracking
 

@@ -60,7 +60,8 @@ Ask Claude: "List my Azure resource groups."
 
 - Logs: `az containerapp logs show -n ca-aio-dev-eus2-mcp -g <rg> --container gateway`
   (or `--container azure-mcp`).
-- "Couldn't reach the MCP server" right after idle: a cold start exceeded
-  Claude's 10-second window. Retry, or set `minReplicas: 1`.
+- "Couldn't reach the MCP server": check the revision is running
+  (`az containerapp revision list ...`). With `minReplicas: 0` a cold start
+  takes about a minute, longer than Claude waits, so dev keeps `minReplicas: 1`.
 - `AADSTS50105` at sign-in: the account isn't assigned to the enterprise app.
   Add its object ID to the allowed list and redeploy.

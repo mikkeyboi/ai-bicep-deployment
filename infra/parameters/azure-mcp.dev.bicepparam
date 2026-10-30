@@ -27,7 +27,9 @@ param config = {
     subscriptionRoles: [ 'Reader' ]
     readOnly: true
     namespaces: []
-    minReplicas: 0
+    // Always-on: a scale-from-zero cold start measured ~56 s (two image
+    // pulls + .NET start), well past Claude's 10 s discovery timeout.
+    minReplicas: 1
     maxReplicas: 1
     gatewayCpu: '0.25'
     gatewayMemory: '0.5Gi'
