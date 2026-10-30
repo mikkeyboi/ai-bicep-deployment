@@ -60,9 +60,11 @@ state lives in Table Storage.
 
 ## Change access
 
-- **Allow writes**: in `azure-mcp.<env>.bicepparam` set
-  `subscriptionRoles: [ 'Reader', 'Contributor' ]` and `readOnly: false`,
-  then redeploy.
+- **Roles**: `subscriptionRoles` (subscription scope) and `resourceGroupRoles`
+  (workload resource group) in `azure-mcp.<env>.bicepparam`. dev has
+  Reader everywhere, plus Cognitive Services Contributor and Foundry User on
+  the resource group, with `readOnly: false`. Avoid roles that can write role
+  assignments.
 - **Revoke a user**: remove them from `AZURE_MCP_ALLOWED_PRINCIPAL_IDS` and
   redeploy. Their existing tokens fail the gateway allowlist immediately after
   the new revision starts. Removing their Entra assignment for the enterprise

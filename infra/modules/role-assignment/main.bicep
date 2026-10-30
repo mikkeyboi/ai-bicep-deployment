@@ -28,6 +28,7 @@ var roleMap = {
   AcrPull:                                '7f951dda-4ed3-4680-a7ca-43fe172d538d'
   'Key Vault Secrets User':               '4633458b-17de-408a-b874-0445c86b69e6'
   'Key Vault Secrets Officer':            'b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
+  'Foundry User':                         '53ca6127-db72-4b80-b1b0-d745d6d5456d'
   'AzureML Data Scientist':               'f6c7c914-8db3-469d-8ca1-694a8f32e121'
   'Search Index Data Contributor':        '8ebe5a00-799e-43f5-93ac-243d3dce84a7'
   'Search Service Contributor':           '7ca78c08-252a-4471-8644-bb5ff32d4ba0'

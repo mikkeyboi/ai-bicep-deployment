@@ -24,10 +24,15 @@ param config = {
     // so any gateway code change gets a new immutable tag automatically.
     gatewayImageTag: readEnvironmentVariable('AZURE_MCP_GATEWAY_IMAGE_TAG', '')
     allowedPrincipalIds: readEnvironmentVariable('AZURE_MCP_ALLOWED_PRINCIPAL_IDS', '')
-    // Read-only by default. To let Claude change resources, add
-    // 'Contributor' here and set readOnly: false.
+    // Read everywhere in the subscription...
     subscriptionRoles: [ 'Reader' ]
-    readOnly: true
+    // ...and manage Foundry in this resource group (both Foundry accounts):
+    // control plane (accounts, projects, model deployments) + data plane
+    // (inference, agents). No role that can write role assignments.
+    resourceGroupRoles: [ 'Cognitive Services Contributor', 'Foundry User' ]
+    // Writes are needed for deployments/agents; outside the roles above
+    // Azure refuses them.
+    readOnly: false
     namespaces: []
     // Always-on: a scale-from-zero cold start measured ~56 s (two image
     // pulls + .NET start), well past Claude's 10 s discovery timeout.

@@ -194,6 +194,8 @@ type azureMcpConfig = {
   allowedPrincipalIds: string
   @description('Built-in roles granted at SUBSCRIPTION scope to the Azure MCP Server identity. Reader by default; add Contributor (and set readOnly=false) to allow changes.')
   subscriptionRoles: string[]
+  @description('Built-in roles granted at the workload RESOURCE GROUP scope to the Azure MCP Server identity (e.g. Foundry management). Roles that can write role assignments (Owner, Foundry Owner / Account Owner, User Access Administrator) should not be used here: this identity is reachable from the internet-facing connector.')
+  resourceGroupRoles: string[]
   @description('Pass --read-only to Azure MCP Server so write tools are not exposed.')
   readOnly: bool
   @description('Service namespaces to expose (e.g. storage, monitor). Empty = all.')

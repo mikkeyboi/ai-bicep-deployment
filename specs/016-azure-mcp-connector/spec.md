@@ -79,7 +79,10 @@ registration keep working (no reconnect).
   - gateway: `AcrPull` on the registry, `Storage Table Data Contributor` on
     the storage account, and `Key Vault Secrets User` on its single secret.
   - Azure MCP Server: `subscriptionRoles` (default `Reader`) at
-    subscription scope.
+    subscription scope, plus `resourceGroupRoles` at the workload resource
+    group. dev sets `Cognitive Services Contributor` (Foundry accounts,
+    projects, model deployments) and `Foundry User` (inference, agents).
+    Roles that can write role assignments are excluded on purpose.
 - **FR-010**: OAuth state (client registrations, encrypted upstream tokens)
   persists in Azure Table Storage, Fernet-encrypted with a key derived (HKDF)
   from Key Vault secret `azure-mcp-gateway-master-key`. The JWT signing key
@@ -91,6 +94,18 @@ registration keep working (no reconnect).
   emails in source. Allowed principals come from
   `$env:AZURE_MCP_ALLOWED_PRINCIPAL_IDS` (the deploy script defaults it to
   the signed-in operator).
+
+## Known limitation: Foundry MCP tools
+
+Azure MCP's `foundry` namespace proxies Microsoft's hosted Foundry MCP
+server (`https://mcp.ai.azure.com`), which provides model deployment, agent
+and evaluation tools. That server accepts the managed identity's token for
+`initialize` / `tools/list`, but every tool call fails with an internal
+server error: it expects a delegated user token (On-Behalf-Of). The same
+identity can call the Foundry ARM and agents APIs directly (verified
+2026-10-30), so this isn't an RBAC gap. Fixing it means switching to
+On-Behalf-Of outbound auth, or adding gateway-native Foundry tools; see
+plan.md.
 
 ## Out of scope
 

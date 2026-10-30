@@ -140,6 +140,19 @@ module raAzureMcpSubscription '../modules/role-assignment/subscription.bicep' = 
   }
 }]
 
+module raAzureMcpResourceGroup '../modules/role-assignment/main.bicep' = [for role in mcp.resourceGroupRoles: {
+  name: 'ra-azmcp-rg-${toLower(replace(role, ' ', '-'))}'
+  params: {
+    roleAssignment: {
+      principalId: azureMcpMi.outputs.principalId
+      roleDefinitionIdOrName: role
+      scopeResourceId: resourceGroup().id
+      principalType: 'ServicePrincipal'
+      description: 'Azure MCP Server MI -> workload RG (${role})'
+    }
+  }
+}]
+
 module raGatewayAcr '../modules/role-assignment/main.bicep' = {
   name: 'ra-azmcp-gw-acr'
   params: {
@@ -215,7 +228,7 @@ module app '../modules/azure-mcp/container-app.bicep' = {
     azureMcpCpu: mcp.azureMcpCpu
     azureMcpMemory: mcp.azureMcpMemory
   }
-  dependsOn: [ raGatewayAcr, raGatewayTable, raGatewaySecret, raAzureMcpSubscription ]
+  dependsOn: [ raGatewayAcr, raGatewayTable, raGatewaySecret, raAzureMcpSubscription, raAzureMcpResourceGroup ]
 }
 
 // ----- Outputs (no secrets) -----
