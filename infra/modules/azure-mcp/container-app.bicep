@@ -41,6 +41,10 @@ param storageAccountName string
 param storageTableEndpoint string
 param storageTableName string
 
+@description('Blob endpoint and container for full-resolution generated images.')
+param imageStorageAccountUrl string
+param imageContainerName string
+
 @description('Comma-separated object IDs the gateway admits.')
 param allowedPrincipalIds string
 
@@ -136,6 +140,8 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'FOUNDRY_IDENTITY_CLIENT_ID', value: azureMcpIdentityClientId }
             { name: 'AZURE_SUBSCRIPTION_ID', value: subscription().subscriptionId }
             { name: 'AZURE_RESOURCE_MANAGER_URL', value: environment().resourceManager }
+            { name: 'IMAGE_STORAGE_ACCOUNT_URL', value: imageStorageAccountUrl }
+            { name: 'IMAGE_CONTAINER_NAME', value: imageContainerName }
           ]
           probes: [
             {

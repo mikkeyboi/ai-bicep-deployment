@@ -1,6 +1,6 @@
 // modules/role-assignment/main.bicep
 // Idempotent role assignment at resource-group, storage-account,
-// container-registry or Key Vault secret scope.
+// container-registry, blob-container or Key Vault secret scope.
 
 metadata description = 'Idempotent RBAC assignment using guid(scope, principalId, roleDefinitionId).'
 
@@ -24,6 +24,7 @@ var roleMap = {
   'Storage Blob Data Contributor':        'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
   'Storage Blob Data Owner':              'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
   'Storage File Data Privileged Contributor': '69566ab7-960f-475b-8e7c-b3118f30c6bd'
+  'Storage Blob Delegator':               'db58b8e5-c6ad-4a2a-8342-4190687cbf4a'
   'Storage Table Data Contributor':       '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
   AcrPull:                                '7f951dda-4ed3-4680-a7ca-43fe172d538d'
   'Key Vault Secrets User':               '4633458b-17de-408a-b874-0445c86b69e6'
@@ -48,6 +49,7 @@ resource registryScope 'Microsoft.ContainerRegistry/registries@2023-07-01' exist
 }
 
 // .../vaults/<vault>/secrets/<secret> -> '<vault>/<secret>'
+// .../storageAccounts/<acct>/blobServices/default/containers/<c> -> '<acct>/default/<c>'
 var idSegments = split(roleAssignment.scopeResourceId, '/')
 resource keyVaultSecretScope 'Microsoft.KeyVault/vaults/secrets@2023-07-01' existing = if (scopeKind == 'keyVaultSecret') {
   name: '${idSegments[max(length(idSegments) - 3, 0)]}/${last(idSegments)}'
@@ -67,6 +69,21 @@ resource raResourceGroup 'Microsoft.Authorization/roleAssignments@2022-04-01' = 
 resource raStorage 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (scopeKind == 'storageAccount') {
   name: guid('storageAccount', roleAssignment.scopeResourceId, roleAssignment.principalId, roleDefId)
   scope: storageScope
+  properties: {
+    principalId: roleAssignment.principalId
+    principalType: roleAssignment.principalType
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefId)
+    description: roleAssignment.?description ?? null
+  }
+}
+
+resource blobContainerScope 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' existing = if (scopeKind == 'blobContainer') {
+  name: '${idSegments[max(length(idSegments) - 5, 0)]}/default/${last(idSegments)}'
+}
+
+resource raBlobContainer 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (scopeKind == 'blobContainer') {
+  name: guid('blobContainer', roleAssignment.scopeResourceId, roleAssignment.principalId, roleDefId)
+  scope: blobContainerScope
   properties: {
     principalId: roleAssignment.principalId
     principalType: roleAssignment.principalType
@@ -101,4 +118,6 @@ output id string = scopeKind == 'storageAccount'
   ? raStorage!.id
   : scopeKind == 'containerRegistry'
     ? raRegistry!.id
-    : scopeKind == 'keyVaultSecret' ? raKeyVaultSecret!.id : raResourceGroup!.id
+    : scopeKind == 'keyVaultSecret'
+      ? raKeyVaultSecret!.id
+      : scopeKind == 'blobContainer' ? raBlobContainer!.id : raResourceGroup!.id

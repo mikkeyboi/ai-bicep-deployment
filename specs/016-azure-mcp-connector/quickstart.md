@@ -55,6 +55,7 @@ resource group's Foundry accounts.
 | Discover | `foundry_list_accounts`, `foundry_list_models`, `foundry_get_quota` |
 | Deployments | `foundry_list_deployments`, `foundry_deploy_model`, `foundry_delete_deployment` |
 | Agents | `foundry_list_agents`, `foundry_get_agent`, `foundry_create_or_update_agent`, `foundry_delete_agent`, `foundry_run_agent` |
+| Images | `foundry_list_image_deployments`, `foundry_generate_image` (inline previews and expiring download links; originals are kept in the `generated-images` container) |
 
 Example: "Deploy gpt-4.1-mini on <foundry-account> as `mini`, then create an
 agent called `helper` on it and ask it to say hello."

@@ -52,6 +52,7 @@ var azureMcpMiName = nameMi(wl, env, loc, '${mcpInstance}-srv')
 var appUniqueName = nameEntraApp(wl, env, loc, mcpInstance)
 
 var masterKeySecretName = 'azure-mcp-gateway-master-key'
+var imagesContainerName = 'generated-images'
 var storageTableName = 'azuremcpgateway'
 var allowedPrincipalIds = filter(map(split(mcp.allowedPrincipalIds, ','), p => trim(p)), p => !empty(p))
 
@@ -72,6 +73,21 @@ resource masterKey 'Microsoft.KeyVault/vaults/secrets@2023-07-01' existing = {
 
 resource sa 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
   name: stName
+}
+
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' existing = {
+  parent: sa
+  name: 'default'
+}
+
+// Full-resolution images from foundry_generate_image; shared only via
+// short-lived read-only user-delegation SAS links.
+resource imagesContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobService
+  name: imagesContainerName
+  properties: {
+    publicAccess: 'None'
+  }
 }
 
 resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
@@ -153,6 +169,37 @@ module raAzureMcpResourceGroup '../modules/role-assignment/main.bicep' = [for ro
   }
 }]
 
+// Image tools: write only to the images container, and sign user-delegation
+// SAS links (the Delegator role holds just generateUserDelegationKey; a SAS
+// can never exceed the container-scoped data role above it).
+module raAzureMcpImages '../modules/role-assignment/main.bicep' = {
+  name: 'ra-azmcp-images'
+  params: {
+    roleAssignment: {
+      principalId: azureMcpMi.outputs.principalId
+      roleDefinitionIdOrName: 'Storage Blob Data Contributor'
+      scopeResourceId: imagesContainer.id
+      scopeKind: 'blobContainer'
+      principalType: 'ServicePrincipal'
+      description: 'Azure MCP Server MI -> generated-images container'
+    }
+  }
+}
+
+module raAzureMcpDelegator '../modules/role-assignment/main.bicep' = {
+  name: 'ra-azmcp-delegator'
+  params: {
+    roleAssignment: {
+      principalId: azureMcpMi.outputs.principalId
+      roleDefinitionIdOrName: 'Storage Blob Delegator'
+      scopeResourceId: sa.id
+      scopeKind: 'storageAccount'
+      principalType: 'ServicePrincipal'
+      description: 'Azure MCP Server MI -> sign user-delegation SAS for image links'
+    }
+  }
+}
+
 module raGatewayAcr '../modules/role-assignment/main.bicep' = {
   name: 'ra-azmcp-gw-acr'
   params: {
@@ -218,6 +265,8 @@ module app '../modules/azure-mcp/container-app.bicep' = {
     storageAccountName: sa.name
     storageTableEndpoint: sa.properties.primaryEndpoints.table
     storageTableName: storageTableName
+    imageStorageAccountUrl: sa.properties.primaryEndpoints.blob
+    imageContainerName: imagesContainer.name
     allowedPrincipalIds: join(allowedPrincipalIds, ',')
     readOnly: mcp.readOnly
     namespaces: mcp.namespaces
@@ -228,7 +277,7 @@ module app '../modules/azure-mcp/container-app.bicep' = {
     azureMcpCpu: mcp.azureMcpCpu
     azureMcpMemory: mcp.azureMcpMemory
   }
-  dependsOn: [ raGatewayAcr, raGatewayTable, raGatewaySecret, raAzureMcpSubscription, raAzureMcpResourceGroup ]
+  dependsOn: [ raGatewayAcr, raGatewayTable, raGatewaySecret, raAzureMcpSubscription, raAzureMcpResourceGroup, raAzureMcpImages, raAzureMcpDelegator ]
 }
 
 // ----- Outputs (no secrets) -----

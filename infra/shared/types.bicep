@@ -48,8 +48,8 @@ type roleAssignmentSpec = {
   // Built-in role name (resolved to ID in module) or a full GUID.
   roleDefinitionIdOrName: string
   scopeResourceId: string
-  @description('Deployment scope for the assignment. Defaults to resourceGroup; storageAccount / containerRegistry / keyVaultSecret narrow it to the resource named by scopeResourceId (same resource group).')
-  scopeKind: ('resourceGroup' | 'storageAccount' | 'containerRegistry' | 'keyVaultSecret')?
+  @description('Deployment scope for the assignment. Defaults to resourceGroup; storageAccount / containerRegistry / keyVaultSecret / blobContainer narrow it to the resource named by scopeResourceId (same resource group).')
+  scopeKind: ('resourceGroup' | 'storageAccount' | 'containerRegistry' | 'keyVaultSecret' | 'blobContainer')?
   principalType: principalType
   description: string?
 }

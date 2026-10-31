@@ -5,8 +5,9 @@ gateway is an OAuth 2.1 authorization server for the client (DCR, CIMD, S256
 PKCE, refresh rotation) and delegates the actual sign-in to Microsoft Entra
 ID. Every MCP request is then proxied to Azure MCP Server, which runs as a
 sidecar on 127.0.0.1 in the same Container App replica. The gateway also
-serves its own foundry_* tools (foundry_tools.py) for model deployments and
-agents, running as the Azure MCP Server identity.
+serves its own foundry_* tools (foundry_tools.py, image_tools.py) for model
+deployments, agents and image generation, running as the Azure MCP Server
+identity.
 
 Security properties:
 - Entra sign-in is single-tenant, and the enterprise app requires an
@@ -51,6 +52,7 @@ from fastmcp.server.providers.proxy import ProxyClient
 from fastmcp.server.transforms.visibility import Visibility
 
 from foundry_tools import FoundryClient, register_foundry_tools
+from image_tools import ImageStore, register_image_tools
 
 logger = logging.getLogger("azure_mcp_gateway")
 
@@ -193,13 +195,17 @@ def build_app():
     )
     mcp = create_proxy(backend, name="Azure MCP", auth=auth)
     mcp.add_transform(Visibility(False, names=HIDDEN_BACKEND_TOOLS, components={"tool"}))
-    register_foundry_tools(
+    foundry_credential = ManagedIdentityCredential(client_id=_env("FOUNDRY_IDENTITY_CLIENT_ID"))
+    foundry = FoundryClient(
+        foundry_credential,
+        subscription_id=_env("AZURE_SUBSCRIPTION_ID"),
+        arm_url=_env("AZURE_RESOURCE_MANAGER_URL"),
+    )
+    register_foundry_tools(mcp, foundry)
+    register_image_tools(
         mcp,
-        FoundryClient(
-            ManagedIdentityCredential(client_id=_env("FOUNDRY_IDENTITY_CLIENT_ID")),
-            subscription_id=_env("AZURE_SUBSCRIPTION_ID"),
-            arm_url=_env("AZURE_RESOURCE_MANAGER_URL"),
-        ),
+        foundry,
+        ImageStore(foundry_credential, _env("IMAGE_STORAGE_ACCOUNT_URL"), _env("IMAGE_CONTAINER_NAME")),
     )
 
     @mcp.custom_route("/healthz", methods=["GET"])

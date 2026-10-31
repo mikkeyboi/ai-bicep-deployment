@@ -121,6 +121,16 @@ Azure MCP Server identity:
 - **FR-015**: Read tools are annotated `readOnlyHint`, while deploy and
   delete tools are `destructiveHint`, so clients ask before running them.
   Deployment and agent names are validated before they reach a URL.
+- **FR-016**: `foundry_list_image_deployments` (deployments with the
+  `imageGenerations` capability, on any account) and `foundry_generate_image`
+  (`image_tools.py`). The latter uses gpt-image-* via the OpenAI v1
+  `images/generations` route and MAI-Image-* via `/mai/v1/images/generations`
+  (both sides >= 768 px, <= 1,048,576 px). It returns 1–4 inline JPEG
+  previews (<= 1024 px) plus read-only user-delegation SAS links (1–168 h,
+  default 24 h) to full-resolution originals in the private
+  `generated-images` container. The Azure MCP identity holds
+  `Storage Blob Data Contributor` on that container only, plus
+  `Storage Blob Delegator` on the account to sign the links.
 
 ## Out of scope
 

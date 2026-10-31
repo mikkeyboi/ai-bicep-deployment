@@ -25,6 +25,7 @@ from fastmcp.exceptions import ToolError
 
 ARM_SCOPE = "https://management.azure.com/.default"
 FOUNDRY_SCOPE = "https://ai.azure.com/.default"
+COGNITIVE_SCOPE = "https://cognitiveservices.azure.com/.default"
 ARM_API_VERSION = "2026-09-01"
 AGENTS_API_VERSION = "v1"
 FOUNDRY_KINDS = {"AIServices", "OpenAI"}
@@ -67,10 +68,13 @@ class FoundryClient:
         self._accounts: dict[str, dict[str, Any]] = {}
         self._accounts_loaded_at = 0.0
 
-    async def _request(self, method: str, url: str, scope: str, *, body: Any = None) -> Any:
+    async def _request(
+        self, method: str, url: str, scope: str, *, body: Any = None, timeout: float | None = None
+    ) -> Any:
         token = (await self._credential.get_token(scope)).token
         response = await self._http.request(
-            method, url, json=body, headers={"Authorization": f"Bearer {token}"}
+            method, url, json=body, headers={"Authorization": f"Bearer {token}"},
+            **({"timeout": timeout} if timeout else {}),
         )
         if response.status_code >= 400:
             path = url.split("?")[0].split(".com", 1)[-1]
@@ -106,6 +110,18 @@ class FoundryClient:
         if name not in accounts:
             raise ToolError(f"Foundry account '{name}' not found. Available: {', '.join(sorted(accounts)) or 'none'}")
         return accounts[name]
+
+    async def model_endpoint(self, account_name: str) -> str:
+        """Data-plane base URL for model inference (OpenAI v1 and MAI routes)."""
+        account = await self.account(account_name)
+        subdomain = account.get("properties", {}).get("customSubDomainName")
+        if not subdomain:
+            raise ToolError(f"Account '{account_name}' has no custom subdomain, so Entra auth can't be used.")
+        return f"https://{subdomain}.services.ai.azure.com"
+
+    async def inference(self, account: str, path: str, body: Any, *, timeout: float) -> Any:
+        url = await self.model_endpoint(account) + path
+        return await self._request("POST", url, COGNITIVE_SCOPE, body=body, timeout=timeout)
 
     async def project_endpoint(self, account_name: str, project: str | None) -> str:
         account = await self.account(account_name)
